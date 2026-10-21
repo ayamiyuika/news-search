@@ -234,6 +234,15 @@ COMPANIES = [
     },
 ]
 
+# 公式発表と判定するためのドメイン・キーワード群
+OFFICIAL_KEYWORDS = [
+    "pr times", "atpress", "jrhokkaido", "jreast", "jr-central", "westjr",
+    "jr-shikoku", "jrkyushu", "tobu", "seibu", "keisei", "tokyometro",
+    "keio", "odakyu", "tokyu", "keikyu", "sotetsu", "meitetsu", "kintetsu",
+    "nankai", "keihan", "osakametro", "hanshin", "hankyu", "nishitetsu",
+    "公式", "プレスリリース", "ニュースリリース"
+]
+
 # ==========================================
 # 2. スクレイピング＆フィード解析エンジン
 # ==========================================
@@ -298,7 +307,7 @@ def parse_date_text(raw_text, current_year):
 
 
 def fetch_from_rss_feed(query, start_date, end_date):
-    """海外サーバーからでも100%遮断されない公式ニュースフィードから取得"""
+    """公式ニュースフィード・報道メディアから取得"""
     results = []
     encoded_q = urllib.parse.quote(query)
     rss_url = f"https://news.google.com/rss/search?q={encoded_q}&hl=ja&gl=JP&ceid=JP:ja"
@@ -314,7 +323,6 @@ def fetch_from_rss_feed(query, start_date, end_date):
         req = urllib.request.Request(rss_url, headers=headers)
         with urllib.request.urlopen(req, context=ctx, timeout=8) as res:
             xml_data = res.read()
-            # gzip対応
             if xml_data[:2] == b"\x1f\x8b":
                 xml_data = gzip.decompress(xml_data)
 
@@ -335,7 +343,6 @@ def fetch_from_rss_feed(query, start_date, end_date):
             desc = desc_el.text or ""
             source_name = source_el.text if source_el is not None else ""
 
-            # 日付のパース（RFC 2822 -> JST）
             item_date = None
             if pubdate_str:
                 try:
@@ -350,7 +357,6 @@ def fetch_from_rss_feed(query, start_date, end_date):
             if not item_date or not (start_date <= item_date <= end_date):
                 continue
 
-            # タイトルと出典の整形（例: "タイトル - 出典元" から出典を分離）
             clean_title = raw_title
             if " - " in raw_title:
                 parts = raw_title.rsplit(" - ", 1)
@@ -358,30 +364,16 @@ def fetch_from_rss_feed(query, start_date, end_date):
                 if not source_name:
                     source_name = parts[1].strip()
 
-            # 主な内容（サマリー）の作成
             clean_desc = re.sub(r"<[^>]+>", " ", desc)
             clean_desc = html.unescape(clean_desc)
             clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
             summary = clean_desc if len(clean_desc) > 10 else clean_title
 
-            # 種別判定（公式発表 or ニュース）
-            is_official = any(
-                k in (source_name + link).lower()
-                for k in [
-                    "pr times",
-                    "atpress",
-                    "jreast",
-                    "jr-central",
-                    "westjr",
-                    "kintetsu",
-                    "tokyometro",
-                    "hankyu",
-                    "nankai",
-                    "keio",
-                    "tokyu",
-                ]
-            )
+            # 広報発表（公式）かニュース（非公式）かの高精度判定
+            check_text = (source_name + " " + link + " " + clean_title).lower()
+            is_official = any(k in check_text for k in OFFICIAL_KEYWORDS)
             doc_type = "広報発表" if is_official else "ニュース"
+
             is_pdf = bool(
                 link.lower().endswith(".pdf") or "pdf" in clean_title.lower()
             )
@@ -392,7 +384,7 @@ def fetch_from_rss_feed(query, start_date, end_date):
                 "title": clean_title,
                 "summary": summary[:140] + ("..." if len(summary) > 140 else ""),
                 "url": link,
-                "source": source_name or "公式・メディア発表",
+                "source": source_name or ("公式発表" if is_official else "メディア報道"),
                 "is_pdf": is_pdf,
             })
     except Exception:
@@ -402,7 +394,7 @@ def fetch_from_rss_feed(query, start_date, end_date):
 
 
 def fetch_company_news(company_info, start_date, end_date):
-    """サイト直接スクレイピング ＋ 自動RSSフォールバックのハイブリッド巡回"""
+    """サイト直接スクレイピング ＋ 自動フォールバックのハイブリッド巡回"""
     results = []
     seen_urls = set()
     current_year = datetime.date.today().year
@@ -418,7 +410,7 @@ def fetch_company_news(company_info, start_date, end_date):
         "Accept-Encoding": "gzip, deflate",
     }
 
-    # 1. まず公式サイトへの直接アクセスを試行
+    # 1. 公式サイト直接スクレイピング
     for url in company_info["urls"]:
         try:
             req = urllib.request.Request(url, headers=headers)
@@ -439,7 +431,6 @@ def fetch_company_news(company_info, start_date, end_date):
 
             html_text = raw_bytes.decode("utf-8", errors="ignore")
 
-            # リンクを探索
             a_matches = list(
                 re.finditer(
                     r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>(.*?)</a>',
@@ -475,11 +466,7 @@ def fetch_company_news(company_info, start_date, end_date):
                 title = re.sub(r"\s+", " ", title).strip()
 
                 if len(title) < 5 or title.lower() in [
-                    "pdf",
-                    "詳細",
-                    "こちら",
-                    "詳しくはこちら",
-                    "詳しく見る",
+                    "pdf", "詳細", "こちら", "詳しくはこちら", "詳しく見る"
                 ]:
                     comb = re.sub(r"<[^>]+>", " ", surrounding)
                     comb = html.unescape(comb)
@@ -493,12 +480,7 @@ def fetch_company_news(company_info, start_date, end_date):
                 title = re.sub(r"\s+", " ", title).strip()
 
                 if len(title) < 5 or title in [
-                    "一覧",
-                    "トップへ戻る",
-                    "詳細はこちら",
-                    "次へ",
-                    "前へ",
-                    "サイトマップ",
+                    "一覧", "トップへ戻る", "詳細はこちら", "次へ", "前へ", "サイトマップ"
                 ]:
                     continue
 
@@ -507,15 +489,11 @@ def fetch_company_news(company_info, start_date, end_date):
                     re.search(r"\.pdf$", full_url, re.IGNORECASE)
                     or "pdf" in surrounding.lower()
                 )
-                doc_type = (
-                    "広報発表"
-                    if ("release" in full_url.lower() or "press" in full_url.lower())
-                    else "ニュース"
-                )
 
+                # 公式サイト直接取得分は「広報発表」
                 results.append({
                     "date": found_date,
-                    "type": doc_type,
+                    "type": "広報発表",
                     "title": title[:130],
                     "summary": title,
                     "url": full_url,
@@ -525,7 +503,7 @@ def fetch_company_news(company_info, start_date, end_date):
         except Exception:
             pass
 
-    # 2. ★海外ブロックやJS生成で0件だった場合、専用ニュースフィードから漏れなく救出
+    # 2. 0件だった場合、専用ニュースフィードから補完
     if not results and "query" in company_info:
         feed_results = fetch_from_rss_feed(
             company_info["query"], start_date, end_date
@@ -545,7 +523,7 @@ today = datetime.date.today()
 default_start = today - datetime.timedelta(days=7)
 
 with st.sidebar:
-    st.header("⚙️ 巡回条件の指定")
+    st.header("⚙️ 巡回・抽出条件")
 
     st.write("**1. 巡回対象期間**")
     date_range = st.date_input(
@@ -559,10 +537,17 @@ with st.sidebar:
         start_date = end_date = date_range[0]
 
     st.markdown("---")
-    st.write("**2. 絞り込み表示**")
+    st.write("**2. 会社・種別の絞り込み**")
     selected_category = st.radio(
         "会社分類", ["すべて", "JR", "私鉄", "近鉄グループ"]
     )
+
+    # ★ご要望の「広報発表（公式）」「ニュース（非公式）」分類ラジオボタン
+    selected_type = st.radio(
+        "発表・記事の種別",
+        ["すべて", "広報発表（公式）", "ニュース（非公式）"],
+    )
+
     search_keyword = st.text_input("キーワード検索", "")
 
     st.markdown("---")
@@ -603,7 +588,7 @@ else:
     current_category = None
 
     for comp in COMPANIES:
-        # サイドバー絞り込み
+        # 会社分類の絞り込み
         if selected_category == "JR" and comp["category"] != "JR":
             continue
         if selected_category == "私鉄" and comp["category"] != "私鉄":
@@ -612,6 +597,12 @@ else:
             continue
 
         items = st.session_state.fetched_data.get(comp["name"], [])
+
+        # ★発表種別の絞り込み（広報発表／ニュース）
+        if selected_type == "広報発表（公式）":
+            items = [item for item in items if item["type"] == "広報発表"]
+        elif selected_type == "ニュース（非公式）":
+            items = [item for item in items if item["type"] == "ニュース"]
 
         # キーワード検索
         if search_keyword:
@@ -642,16 +633,18 @@ else:
         )
 
         if not items:
-            st.info("📅 指定期間内の発表は **なし** です。")
+            type_label = f"（{selected_type}）" if selected_type != "すべて" else ""
+            st.info(f"📅 指定期間・条件内の発表{type_label}は **なし** です。")
             st.write("")
         else:
             # 日付が新しい順にソートして表示
             items.sort(key=lambda x: x["date"], reverse=True)
             for item in items:
+                # バッジ表示
                 type_badge = (
-                    "📢 **広報発表**"
+                    "📢 **広報発表（公式）**"
                     if item["type"] == "広報発表"
-                    else "📰 **ニュース**"
+                    else "📰 **ニュース（非公式）**"
                 )
                 file_badge = (
                     "🟥 **[PDF資料]**" if item["is_pdf"] else "🌐 **[Web発表]**"
