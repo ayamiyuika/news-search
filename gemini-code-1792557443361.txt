@@ -1,0 +1,5 @@
+railway_news_app/
+│
+├── app.py                # Streamlit Webアプリ本体
+├── scraper.py            # 巡回・スクレイピング・データ整形ロジック
+└── requirements.txt      # 依存ライブラリ一覧
