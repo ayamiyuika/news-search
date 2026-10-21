@@ -19,11 +19,12 @@ st.set_page_config(
 
 st.title("🚆 全国大手鉄道会社 ニュース・広報発表 巡回チェッカー")
 st.caption(
-    "JR各社・大手私鉄・地下鉄の公式発表および最新ニュースを巡回し、指定期間内の発表を本来の配信元リンク付きで一覧表示します。"
+    "JR各社・大手私鉄・地下鉄の公式ホームページおよび一般ニュースを自動巡回し、指定期間内の発表を一覧表示します。"
 )
 
 # ==========================================
 # 1. 鉄道会社・持株会社のマスターデータ（東から西順）
+# 各社の公式ホームページのみを厳選して巡回先に設定
 # ==========================================
 COMPANIES = [
     # --- JR各社（東から西順） ---
@@ -31,6 +32,7 @@ COMPANIES = [
         "category": "JR",
         "name": "JR北海道",
         "region": "北海道",
+        "official_domain": "jrhokkaido.co.jp",
         "urls": [
             "https://www.jrhokkaido.co.jp/CM/info/press/presstop.html",
             "https://www.jrhokkaido.co.jp/",
@@ -41,6 +43,7 @@ COMPANIES = [
         "category": "JR",
         "name": "JR東日本",
         "region": "東日本",
+        "official_domain": "jreast.co.jp",
         "urls": [
             "https://www.jreast.co.jp/press/",
             "https://www.jreast.co.jp/company/",
@@ -51,6 +54,7 @@ COMPANIES = [
         "category": "JR",
         "name": "JR東海",
         "region": "東海",
+        "official_domain": "jr-central.co.jp",
         "urls": [
             "https://jr-central.co.jp/news/release/",
             "https://jr-central.co.jp/",
@@ -61,21 +65,33 @@ COMPANIES = [
         "category": "JR",
         "name": "JR西日本",
         "region": "西日本",
-        "urls": ["https://www.westjr.co.jp/press/"],
+        "official_domain": "westjr.co.jp",
+        "urls": [
+            "https://www.westjr.co.jp/press/",
+            "https://www.westjr.co.jp/",
+        ],
         "query": "JR西日本",
     },
     {
         "category": "JR",
         "name": "JR四国",
         "region": "四国",
-        "urls": ["https://www.jr-shikoku.co.jp/03_news/press/"],
+        "official_domain": "jr-shikoku.co.jp",
+        "urls": [
+            "https://www.jr-shikoku.co.jp/03_news/press/",
+            "https://www.jr-shikoku.co.jp/",
+        ],
         "query": "JR四国",
     },
     {
         "category": "JR",
         "name": "JR九州",
         "region": "九州",
-        "urls": ["https://www.jrkyushu.co.jp/news/release/index.html"],
+        "official_domain": "jrkyushu.co.jp",
+        "urls": [
+            "https://www.jrkyushu.co.jp/news/release/index.html",
+            "https://www.jrkyushu.co.jp/",
+        ],
         "query": "JR九州",
     },
     # --- 私鉄各社（東から西順） ---
@@ -83,6 +99,7 @@ COMPANIES = [
         "category": "私鉄",
         "name": "東武鉄道",
         "region": "関東",
+        "official_domain": "tobu.co.jp",
         "urls": ["https://www.tobu.co.jp/newsrelease/"],
         "query": "東武鉄道",
     },
@@ -90,6 +107,7 @@ COMPANIES = [
         "category": "私鉄",
         "name": "西武鉄道（西武HD含む）",
         "region": "関東",
+        "official_domain": "seiburailway.jp",
         "urls": [
             "https://www.seiburailway.jp/newsroom/news/",
             "https://www.seibuholdings.co.jp/news/",
@@ -100,16 +118,21 @@ COMPANIES = [
         "category": "私鉄",
         "name": "京成電鉄",
         "region": "関東",
-        "urls": ["https://www.keisei.co.jp/keisei/kouhou/news/index.php"],
+        "official_domain": "keisei.co.jp",
+        "urls": [
+            "https://www.keisei.co.jp/keisei/kouhou/news/index.php",
+            "https://www.keisei.co.jp/",
+        ],
         "query": "京成電鉄",
     },
     {
         "category": "私鉄",
         "name": "東京メトロ",
         "region": "関東",
+        "official_domain": "tokyometro.jp",
         "urls": [
-            "https://www.tokyometro.jp/news/rss/news.xml",
             "https://www.tokyometro.jp/news/index.html",
+            "https://www.tokyometro.jp/news/rss/news.xml",
         ],
         "query": "東京メトロ OR 東京地下鉄",
     },
@@ -117,6 +140,7 @@ COMPANIES = [
         "category": "私鉄",
         "name": "京王電鉄",
         "region": "関東",
+        "official_domain": "keio.co.jp",
         "urls": [
             "https://www.keio.co.jp/news/update/news_release/",
             "https://www.keio.co.jp/news/update/index.html",
@@ -127,13 +151,18 @@ COMPANIES = [
         "category": "私鉄",
         "name": "小田急電鉄",
         "region": "関東",
-        "urls": ["https://www.odakyu.jp/company/about/news/"],
+        "official_domain": "odakyu.jp",
+        "urls": [
+            "https://www.odakyu.jp/company/about/news/",
+            "https://www.odakyu.jp/",
+        ],
         "query": "小田急電鉄",
     },
     {
         "category": "私鉄",
         "name": "東急電鉄（東急HD含む）",
         "region": "関東",
+        "official_domain": "tokyu.co.jp",
         "urls": [
             "https://www.tokyu.co.jp/company/news/",
             "https://www.tokyu.co.jp/information/",
@@ -144,13 +173,18 @@ COMPANIES = [
         "category": "私鉄",
         "name": "京浜急行電鉄",
         "region": "関東",
-        "urls": ["https://www.keikyu.co.jp/company/news/"],
+        "official_domain": "keikyu.co.jp",
+        "urls": [
+            "https://www.keikyu.co.jp/company/news/",
+            "https://www.keikyu.co.jp/",
+        ],
         "query": "京浜急行電鉄 OR 京急",
     },
     {
         "category": "私鉄",
         "name": "相模鉄道（相鉄HD含む）",
         "region": "関東",
+        "official_domain": "sotetsu.co.jp",
         "urls": [
             "https://www.sotetsu.co.jp/pressrelease/",
             "https://www.sotetsu.co.jp/news/",
@@ -161,16 +195,22 @@ COMPANIES = [
         "category": "私鉄",
         "name": "名古屋鉄道",
         "region": "東海",
-        "urls": ["https://www.meitetsu.co.jp/profile/news/"],
+        "official_domain": "meitetsu.co.jp",
+        "urls": [
+            "https://www.meitetsu.co.jp/profile/news/",
+            "https://www.meitetsu.co.jp/",
+        ],
         "query": "名古屋鉄道 OR 名鉄",
     },
     {
         "category": "私鉄",
         "name": "近鉄グループ（近畿日本鉄道・近鉄GHD）",
         "region": "関西",
+        "official_domain": "kintetsu.co.jp",
         "urls": [
             "https://www.kintetsu.co.jp/all_news/whatsnew.html",
             "https://www.kintetsu-g-hd.co.jp/news/",
+            "https://www.kintetsu.co.jp/",
         ],
         "query": "近畿日本鉄道 OR 近鉄グループホールディングス OR 近鉄",
     },
@@ -178,13 +218,18 @@ COMPANIES = [
         "category": "私鉄",
         "name": "南海電気鉄道",
         "region": "関西",
-        "urls": ["https://www.nankai.co.jp/news.html"],
+        "official_domain": "nankai.co.jp",
+        "urls": [
+            "https://www.nankai.co.jp/news.html",
+            "https://www.nankai.co.jp/",
+        ],
         "query": "南海電気鉄道 OR 南海電鉄",
     },
     {
         "category": "私鉄",
         "name": "京阪電気鉄道（京阪HD含む）",
         "region": "関西",
+        "official_domain": "keihan.co.jp",
         "urls": [
             "https://www.keihan.co.jp/corporate/release/",
             "https://www.keihan-holdings.co.jp/news/",
@@ -195,6 +240,7 @@ COMPANIES = [
         "category": "私鉄",
         "name": "大阪メトロ (Osaka Metro)",
         "region": "関西",
+        "official_domain": "osakametro.co.jp",
         "urls": [
             "https://subway.osakametro.co.jp/news/news_release/",
             "https://subway.osakametro.co.jp/news/",
@@ -205,20 +251,29 @@ COMPANIES = [
         "category": "私鉄",
         "name": "阪神電気鉄道",
         "region": "関西",
-        "urls": ["https://www.hanshin.co.jp/company/press/"],
+        "official_domain": "hanshin.co.jp",
+        "urls": [
+            "https://www.hanshin.co.jp/company/press/",
+            "https://www.hanshin.co.jp/",
+        ],
         "query": "阪神電気鉄道 OR 阪神電車",
     },
     {
         "category": "私鉄",
         "name": "阪急電鉄",
         "region": "関西",
-        "urls": ["https://www.hankyu.co.jp/company/news/index.html"],
+        "official_domain": "hankyu.co.jp",
+        "urls": [
+            "https://www.hankyu.co.jp/company/news/index.html",
+            "https://www.hankyu.co.jp/",
+        ],
         "query": "阪急電鉄 OR 阪急電車",
     },
     {
         "category": "私鉄",
         "name": "阪急阪神ホールディングス",
         "region": "関西",
+        "official_domain": "hankyu-hanshin.co.jp",
         "urls": ["https://www.hankyu-hanshin.co.jp/release/"],
         "query": "阪急阪神ホールディングス OR \"阪急阪神HD\"",
     },
@@ -226,6 +281,7 @@ COMPANIES = [
         "category": "私鉄",
         "name": "西日本鉄道",
         "region": "九州",
+        "official_domain": "nishitetsu.co.jp",
         "urls": [
             "https://www.nishitetsu.co.jp/ja/news.html",
             "https://www.nishitetsu.co.jp/release/",
@@ -234,21 +290,55 @@ COMPANIES = [
     },
 ]
 
-# 公式発表と判定するドメイン・キーワード
-OFFICIAL_DOMAINS = [
-    "prtimes.jp", "atpress.ne.jp", "jrhokkaido.co.jp", "jreast.co.jp",
-    "jr-central.co.jp", "westjr.co.jp", "jr-shikoku.co.jp", "jrkyushu.co.jp",
-    "tobu.co.jp", "seiburailway.jp", "seibuholdings.co.jp", "keisei.co.jp",
-    "tokyometro.jp", "keio.co.jp", "odakyu.jp", "tokyu.co.jp", "keikyu.co.jp",
-    "sotetsu.co.jp", "meitetsu.co.jp", "kintetsu.co.jp", "kintetsu-g-hd.co.jp",
-    "nankai.co.jp", "keihan.co.jp", "keihan-holdings.co.jp", "osakametro.co.jp",
-    "hanshin.co.jp", "hankyu.co.jp", "hankyu-hanshin.co.jp", "nishitetsu.co.jp"
-]
+# タイトルとして採用してはいけない汎用ボタン・リンク文言のブラックリスト
+GENERIC_LINK_TEXTS = {
+    "一覧を見る", "ニュース一覧を見る", "お知らせ一覧を見る", "過去の一覧を見る",
+    "リリース一覧を見る", "一覧はこちら", "一覧へ", "一覧", "詳しく見る",
+    "詳しくはこちら", "詳細を見る", "詳細はこちら", "詳細", "こちら", "もっと見る",
+    "記事を読む", "続きを読む", "pdfを見る", "pdfを開く", "pdfダウンロード",
+    "pdf", "ダウンロード", "リンク", "次へ", "前へ", "トップへ戻る", "ホーム",
+    "企業情報", "サイトマップ", "ニュースリリース", "お知らせ", "新着情報"
+}
 
 # ==========================================
-# 2. スクレイピング＆本来のニュース配信解析エンジン
+# 2. 自動エンコーディング解析エンジン（文字化け完全防止）
 # ==========================================
 zen_to_han = str.maketrans("０１２３４５６７８９", "0123456789")
+
+
+def decode_html_bytes(raw_bytes):
+    """JR西日本などのShift_JIS/CP932、UTF-8、EUC-JPを自動判別して完璧にデコード"""
+    # 1. meta charset宣言を探す
+    match = re.search(
+        rb'charset\s*=\s*["\']?\s*([a-zA-Z0-9_\-]+)', raw_bytes[:4096]
+    )
+    detected_enc = None
+    if match:
+        enc = match.group(1).decode("ascii", errors="ignore").lower()
+        if enc in ["shift_jis", "sjis", "shift-jis", "x-sjis", "ms932", "windows-31j"]:
+            detected_enc = "cp932"
+        elif enc in ["euc-jp", "euc_jp", "x-euc-jp"]:
+            detected_enc = "euc_jp"
+        elif enc in ["utf-8", "utf8"]:
+            detected_enc = "utf-8"
+        else:
+            detected_enc = enc
+
+    # 試行候補
+    candidate_encs = []
+    if detected_enc:
+        candidate_encs.append(detected_enc)
+    for c in ["utf-8", "cp932", "euc_jp", "iso-2022-jp"]:
+        if c not in candidate_encs:
+            candidate_encs.append(c)
+
+    for enc in candidate_encs:
+        try:
+            return raw_bytes.decode(enc)
+        except (UnicodeDecodeError, LookupError):
+            continue
+
+    return raw_bytes.decode("utf-8", errors="replace")
 
 
 def parse_date_text(raw_text, current_year):
@@ -308,18 +398,181 @@ def parse_date_text(raw_text, current_year):
     return None
 
 
-def fetch_from_news_feed(query, start_date, end_date):
-    """★本来のニュースページへ直接飛べるダイレクトRSSエンジン"""
+# ==========================================
+# 3. 公式サイト直接巡回（公式発表専用・PR TIMES等完全排除）
+# ==========================================
+def fetch_official_releases(company_info, start_date, end_date):
+    """各社公式ホームページからのみ直接「公式発表」を取得"""
+    results = []
+    seen_urls = set()
+    current_year = datetime.date.today().year
+
+    ctx = ssl._create_unverified_context()
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            " (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "ja,ja-JP;q=0.9,en;q=0.8",
+        "Accept-Encoding": "gzip, deflate",
+    }
+
+    for url in company_info["urls"]:
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, context=ctx, timeout=8) as res:
+                raw_bytes = res.read()
+                content_encoding = res.headers.get("Content-Encoding", "").lower()
+
+            if content_encoding == "gzip" or raw_bytes[:2] == b"\x1f\x8b":
+                try:
+                    raw_bytes = gzip.decompress(raw_bytes)
+                except Exception:
+                    pass
+            elif content_encoding == "deflate":
+                try:
+                    raw_bytes = zlib.decompress(raw_bytes)
+                except Exception:
+                    pass
+
+            # ★ 文字化け防止デコード
+            html_text = decode_html_bytes(raw_bytes)
+
+            # RSSフィード（東京メトロ等）の場合
+            if "<rss" in html_text or "<feed" in html_text:
+                for item_xml in re.findall(r"<item>(.*?)</item>", html_text, flags=re.DOTALL):
+                    t_m = re.search(r"<title>(.*?)</title>", item_xml, flags=re.DOTALL)
+                    l_m = re.search(r"<link>(.*?)</link>", item_xml, flags=re.DOTALL)
+                    d_m = re.search(r"<(?:pubDate|dc:date)>(.*?)</(?:pubDate|dc:date)>", item_xml, flags=re.DOTALL)
+                    if t_m and l_m:
+                        t = re.sub(r"<!\[CDATA\[(.*?)\]\]>", r"\1", t_m.group(1)).strip()
+                        l = l_m.group(1).strip()
+                        d_str = d_m.group(1) if d_m else ""
+                        item_date = parse_date_text(d_str, current_year)
+                        if item_date and (start_date <= item_date <= end_date) and l not in seen_urls:
+                            seen_urls.add(l)
+                            results.append({
+                                "date": item_date,
+                                "type": "公式発表",
+                                "title": t,
+                                "summary": t,
+                                "url": l,
+                                "source": company_info["name"] + " 公式HP",
+                                "is_pdf": l.lower().endswith(".pdf"),
+                            })
+                continue
+
+            # 通常HTMLページの場合
+            clean_html = re.sub(r"<script.*?>.*?</script>", "", html_text, flags=re.DOTALL | re.IGNORECASE)
+            clean_html = re.sub(r"<style.*?>.*?</style>", "", clean_html, flags=re.DOTALL | re.IGNORECASE)
+
+            a_matches = list(
+                re.finditer(
+                    r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>(.*?)</a>',
+                    clean_html,
+                    flags=re.IGNORECASE | re.DOTALL,
+                )
+            )
+
+            for m in a_matches:
+                raw_href = m.group(1).strip()
+                if raw_href.startswith(("javascript:", "#", "mailto:", "tel:")):
+                    continue
+
+                full_url = urllib.parse.urljoin(url, raw_href)
+                if full_url in seen_urls:
+                    continue
+
+                # ★ 自社公式ドメイン以外のリンク（SNSシェアや広告等）は除外
+                parsed_u = urllib.parse.urlparse(full_url)
+                if not any(d in parsed_u.netloc.lower() for d in [company_info["official_domain"], "westjr.co.jp", "jreast.co.jp", "kintetsu"]):
+                    continue
+
+                inside_html = m.group(2)
+                start_pos, end_pos = m.start(), m.end()
+                surrounding = clean_html[
+                    max(0, start_pos - 450) : min(len(clean_html), end_pos + 350)
+                ]
+
+                # 日付の探索
+                found_date = parse_date_text(inside_html, current_year)
+                if not found_date:
+                    found_date = parse_date_text(surrounding, current_year)
+
+                if not found_date or not (start_date <= found_date <= end_date):
+                    continue
+
+                # タイトルの抽出
+                raw_t = re.sub(r"<[^>]+>", " ", inside_html)
+                raw_t = html.unescape(raw_t)
+                clean_t = re.sub(r"\s+", " ", raw_t).strip()
+
+                # ★「一覧を見る」などの汎用文言を徹底排除
+                if clean_t in GENERIC_LINK_TEXTS or len(clean_t) < 5:
+                    # 見出しタグ <h1>〜<h5> または <dt><dd>等から本当のタイトルを救出
+                    h_m = re.findall(r"<h[1-5][^>]*>(.*?)</h[1-5]>", surrounding, flags=re.DOTALL | re.IGNORECASE)
+                    if h_m:
+                        clean_t = re.sub(r"<[^>]+>", "", h_m[-1]).strip()
+                    else:
+                        # 周辺テキストから探しても汎用文言しか取れない場合はスキップ
+                        comb = re.sub(r"<[^>]+>", " ", surrounding)
+                        comb = html.unescape(comb)
+                        lines = [line.strip() for line in comb.split() if len(line.strip()) > 6 and line.strip() not in GENERIC_LINK_TEXTS]
+                        if lines:
+                            clean_t = lines[0]
+                        else:
+                            continue
+
+                if clean_t in GENERIC_LINK_TEXTS or len(clean_t) < 5:
+                    continue
+
+                # 先頭の日付や記号を削除
+                clean_t = re.sub(
+                    r"^(?:令和\s*[0-9０-９元]+年|\d{4}年|\d{1,2}月|\d{1,2}日|[\d\.\/\-\s・\|｜【】\[\]\(\)])+",
+                    "",
+                    clean_t,
+                )
+                clean_t = re.sub(r"\s+", " ", clean_t).strip()
+
+                if len(clean_t) < 5 or clean_t in GENERIC_LINK_TEXTS:
+                    continue
+
+                seen_urls.add(full_url)
+                is_pdf = bool(
+                    re.search(r"\.pdf$", full_url, re.IGNORECASE)
+                    or "pdf" in surrounding.lower()
+                )
+
+                results.append({
+                    "date": found_date,
+                    "type": "公式発表",
+                    "title": clean_t[:130],
+                    "summary": clean_t,
+                    "url": full_url,
+                    "source": company_info["name"] + " 公式HP",
+                    "is_pdf": is_pdf,
+                })
+        except Exception:
+            pass
+
+    return results
+
+
+# ==========================================
+# 4. 一般ニュース巡回（一般サイト専用・ダイレクトリンク）
+# ==========================================
+def fetch_general_news(query, start_date, end_date):
+    """一般ニュースメディア（Yahoo!ニュース、新聞、鉄道コム等）から記事をダイレクト取得"""
     results = []
     encoded_q = urllib.parse.quote(query)
-    # Bing News RSSは各メディア（Yahoo, 朝日, 読売, PR TIMES等）の直接リンクを返します
     rss_url = f"https://www.bing.com/news/search?q={encoded_q}&format=rss&mkt=ja-JP"
 
     ctx = ssl._create_unverified_context()
     headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            " (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            " (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         ),
         "Accept": "application/rss+xml, application/xml, text/xml, */*",
     }
@@ -346,11 +599,9 @@ def fetch_from_news_feed(query, start_date, end_date):
             pubdate_str = pubdate_el.text if pubdate_el is not None else ""
             desc = desc_el.text or ""
 
-            # Google Newsの中継URLが万一混入した場合は除外
             if "news.google.com" in link:
                 continue
 
-            # 日付のパース（RFC 2822 -> JST）
             item_date = None
             if pubdate_str:
                 try:
@@ -365,36 +616,23 @@ def fetch_from_news_feed(query, start_date, end_date):
             if not item_date or not (start_date <= item_date <= end_date):
                 continue
 
-            # タイトルの整形
             clean_title = raw_title.strip()
-
-            # 主な内容（サマリー）の作成
             clean_desc = re.sub(r"<[^>]+>", " ", desc)
             clean_desc = html.unescape(clean_desc)
             clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
             summary = clean_desc if len(clean_desc) > 10 else clean_title
 
-            # 「公式発表」か「ニュース（一般サイト）」かの判別
             parsed_url = urllib.parse.urlparse(link)
-            domain = parsed_url.netloc.lower()
-            is_official = any(d in domain for d in OFFICIAL_DOMAINS) or "プレスリリース" in clean_title
-            doc_type = "公式発表" if is_official else "ニュース（一般サイト）"
-
-            is_pdf = bool(
-                link.lower().endswith(".pdf") or "pdf" in clean_title.lower()
-            )
-
-            # 配信元ドメインの名称を簡易抽出
-            source_label = domain.replace("www.", "")
+            domain = parsed_url.netloc.lower().replace("www.", "")
 
             results.append({
                 "date": item_date,
-                "type": doc_type,
+                "type": "ニュース（一般サイト）",
                 "title": clean_title,
                 "summary": summary[:140] + ("..." if len(summary) > 140 else ""),
                 "url": link,
-                "source": source_label,
-                "is_pdf": is_pdf,
+                "source": domain,
+                "is_pdf": link.lower().endswith(".pdf"),
             })
     except Exception:
         pass
@@ -402,156 +640,31 @@ def fetch_from_news_feed(query, start_date, end_date):
     return results
 
 
-def fetch_company_news(company_info, start_date, end_date):
-    """公式サイト直接スクレイピング ＋ ダイレクトRSSのハイブリッド巡回"""
-    results = []
-    seen_urls = set()
-    current_year = datetime.date.today().year
+# ==========================================
+# 5. 統合フェッチ（公式発表 ＋ 一般ニュース）
+# ==========================================
+def fetch_company_all(company_info, start_date, end_date):
+    # 1. 公式ホームページから直接取得（公式発表）
+    official_list = fetch_official_releases(company_info, start_date, end_date)
 
-    ctx = ssl._create_unverified_context()
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            " (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
-        "Accept-Encoding": "gzip, deflate",
-    }
-
-    # 1. 公式サイト直接巡回（公式発表を最優先で取得）
-    for url in company_info["urls"]:
-        try:
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, context=ctx, timeout=8) as res:
-                raw_bytes = res.read()
-                content_encoding = res.headers.get("Content-Encoding", "").lower()
-
-            if content_encoding == "gzip" or raw_bytes[:2] == b"\x1f\x8b":
-                try:
-                    raw_bytes = gzip.decompress(raw_bytes)
-                except Exception:
-                    pass
-            elif content_encoding == "deflate":
-                try:
-                    raw_bytes = zlib.decompress(raw_bytes)
-                except Exception:
-                    pass
-
-            html_text = raw_bytes.decode("utf-8", errors="ignore")
-
-            # RSSフィード（東京メトロ等）の場合
-            if "<rss" in html_text or "<feed" in html_text:
-                for item_xml in re.findall(r"<item>(.*?)</item>", html_text, flags=re.DOTALL):
-                    t_m = re.search(r"<title>(.*?)</title>", item_xml, flags=re.DOTALL)
-                    l_m = re.search(r"<link>(.*?)</link>", item_xml, flags=re.DOTALL)
-                    d_m = re.search(r"<(?:pubDate|dc:date)>(.*?)</(?:pubDate|dc:date)>", item_xml, flags=re.DOTALL)
-                    if t_m and l_m:
-                        t = re.sub(r"<!\[CDATA\[(.*?)\]\]>", r"\1", t_m.group(1)).strip()
-                        l = l_m.group(1).strip()
-                        d_str = d_m.group(1) if d_m else ""
-                        item_date = parse_date_text(d_str, current_year)
-                        if item_date and (start_date <= item_date <= end_date) and l not in seen_urls:
-                            seen_urls.add(l)
-                            results.append({
-                                "date": item_date,
-                                "type": "公式発表",
-                                "title": t,
-                                "summary": t,
-                                "url": l,
-                                "source": company_info["name"] + " 公式",
-                                "is_pdf": l.lower().endswith(".pdf"),
-                            })
-                continue
-
-            # 通常HTMLページの場合
-            a_matches = list(
-                re.finditer(
-                    r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>(.*?)</a>',
-                    html_text,
-                    flags=re.IGNORECASE | re.DOTALL,
-                )
-            )
-
-            for m in a_matches:
-                raw_href = m.group(1).strip()
-                if raw_href.startswith(("javascript:", "#", "mailto:", "tel:")):
-                    continue
-
-                full_url = urllib.parse.urljoin(url, raw_href)
-                if full_url in seen_urls:
-                    continue
-
-                inside_html = m.group(2)
-                start_pos, end_pos = m.start(), m.end()
-                surrounding = html_text[
-                    max(0, start_pos - 400) : min(len(html_text), end_pos + 300)
-                ]
-
-                found_date = parse_date_text(inside_html, current_year)
-                if not found_date:
-                    found_date = parse_date_text(surrounding, current_year)
-
-                if not found_date or not (start_date <= found_date <= end_date):
-                    continue
-
-                title = re.sub(r"<[^>]+>", " ", inside_html)
-                title = html.unescape(title)
-                title = re.sub(r"\s+", " ", title).strip()
-
-                if len(title) < 5 or title.lower() in [
-                    "pdf", "詳細", "こちら", "詳しくはこちら", "詳しく見る"
-                ]:
-                    comb = re.sub(r"<[^>]+>", " ", surrounding)
-                    comb = html.unescape(comb)
-                    title = re.sub(r"\s+", " ", comb).strip()
-
-                title = re.sub(
-                    r"^(?:令和\s*[0-9０-９元]+年|\d{4}年|\d{1,2}月|\d{1,2}日|[\d\.\/\-\s・\|｜【】\[\]\(\)])+",
-                    "",
-                    title,
-                )
-                title = re.sub(r"\s+", " ", title).strip()
-
-                if len(title) < 5 or title in [
-                    "一覧", "トップへ戻る", "詳細はこちら", "次へ", "前へ", "サイトマップ"
-                ]:
-                    continue
-
-                seen_urls.add(full_url)
-                is_pdf = bool(
-                    re.search(r"\.pdf$", full_url, re.IGNORECASE)
-                    or "pdf" in surrounding.lower()
-                )
-
-                # 公式ページから直接取得したため「公式発表」
-                results.append({
-                    "date": found_date,
-                    "type": "公式発表",
-                    "title": title[:130],
-                    "summary": title,
-                    "url": full_url,
-                    "source": company_info["name"] + " 公式",
-                    "is_pdf": is_pdf,
-                })
-        except Exception:
-            pass
-
-    # 2. 報道ニュース・補完配信から直接リンクを取得
+    # 2. 一般ニュースサイトから取得（ニュース）
+    general_list = []
     if "query" in company_info:
-        feed_results = fetch_from_news_feed(
-            company_info["query"], start_date, end_date
-        )
-        for r in feed_results:
-            if r["url"] not in seen_urls:
-                seen_urls.add(r["url"])
-                results.append(r)
+        general_list = fetch_general_news(company_info["query"], start_date, end_date)
 
-    return results
+    # 重複排除して統合
+    combined = list(official_list)
+    seen_urls = {item["url"] for item in official_list}
+    for g in general_list:
+        if g["url"] not in seen_urls:
+            seen_urls.add(g["url"])
+            combined.append(g)
+
+    return combined
 
 
 # ==========================================
-# 3. 画面UIと操作パネル（サイドバー）
+# 6. 画面UIと操作パネル（サイドバー）
 # ==========================================
 today = datetime.date.today()
 default_start = today - datetime.timedelta(days=7)
@@ -590,7 +703,7 @@ with st.sidebar:
     )
 
 # ==========================================
-# 4. データ取得の実行
+# 7. データ取得の実行
 # ==========================================
 if "fetched_data" not in st.session_state:
     st.session_state.fetched_data = {}
@@ -602,7 +715,7 @@ if run_button:
 
     for i, comp in enumerate(COMPANIES):
         status_text.text(f"巡回中: {comp['name']} ({i+1}/{len(COMPANIES)}) ...")
-        news_items = fetch_company_news(comp, start_date, end_date)
+        news_items = fetch_company_all(comp, start_date, end_date)
         new_data[comp["name"]] = news_items
         progress_bar.progress((i + 1) / len(COMPANIES))
 
@@ -612,7 +725,7 @@ if run_button:
     st.toast("全社の巡回・データ取得が完了しました！", icon="✅")
 
 # ==========================================
-# 5. 結果の表示（全会社を東から西順に表示）
+# 8. 結果の表示（全会社を東から西順に表示）
 # ==========================================
 if not st.session_state.fetched_data and not run_button:
     st.info(
@@ -632,7 +745,7 @@ else:
 
         items = st.session_state.fetched_data.get(comp["name"], [])
 
-        # ★発表種別（すべて／公式発表／ニュース（一般サイト））の絞り込み
+        # ★発表種別（すべて／公式発表／ニュース（一般サイト））の厳密な絞り込み
         if selected_type == "公式発表":
             items = [item for item in items if item["type"] == "公式発表"]
         elif selected_type == "ニュース（一般サイト）":
@@ -661,7 +774,7 @@ else:
         main_url = comp["urls"][0]
         st.markdown(
             f"### 🏢 {comp['name']} <span style='font-size:0.8em;"
-            f" color:gray;'>（{comp['region']}）</span> [公式ページ"
+            f" color:gray;'>（{comp['region']}）</span> [公式HP"
             f" ↗]({main_url})",
             unsafe_allow_html=True,
         )
@@ -692,7 +805,7 @@ else:
                         st.markdown(file_badge)
                         st.caption(f"情報元: {item['source']}")
                     with col_right:
-                        # 本来のニュースページ・公式ページへの直接リンク
+                        # 公式発表なら公式HP/PDF、ニュースなら一般メディアの直リンク
                         st.markdown(f"##### [{item['title']}]({item['url']})")
                         st.write(f"**主な内容:** {item['summary']}")
                         st.markdown(
