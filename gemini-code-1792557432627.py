@@ -19,12 +19,11 @@ st.set_page_config(
 
 st.title("🚆 全国大手鉄道会社 ニュース・広報発表 巡回チェッカー")
 st.caption(
-    "JR各社・大手私鉄・地下鉄の公式ホームページおよび一般ニュースを自動巡回し、指定期間内の発表を一覧表示します。"
+    "JR各社・大手私鉄・地下鉄の公式発表（公式HP）および一般ニュースを自動巡回し、指定期間内の発表を一覧表示します。"
 )
 
 # ==========================================
 # 1. 鉄道会社・持株会社のマスターデータ（東から西順）
-# 各社の公式ホームページのみを厳選して巡回先に設定
 # ==========================================
 COMPANIES = [
     # --- JR各社（東から西順） ---
@@ -67,8 +66,8 @@ COMPANIES = [
         "region": "西日本",
         "official_domain": "westjr.co.jp",
         "urls": [
+            "https://www.westjr.co.jp/press/article/",
             "https://www.westjr.co.jp/press/",
-            "https://www.westjr.co.jp/",
         ],
         "query": "JR西日本",
     },
@@ -290,7 +289,6 @@ COMPANIES = [
     },
 ]
 
-# タイトルとして採用してはいけない汎用ボタン・リンク文言のブラックリスト
 GENERIC_LINK_TEXTS = {
     "一覧を見る", "ニュース一覧を見る", "お知らせ一覧を見る", "過去の一覧を見る",
     "リリース一覧を見る", "一覧はこちら", "一覧へ", "一覧", "詳しく見る",
@@ -301,44 +299,52 @@ GENERIC_LINK_TEXTS = {
 }
 
 # ==========================================
-# 2. 自動エンコーディング解析エンジン（文字化け完全防止）
+# 2. 自動エンコーディング解析エンジン（JR西日本等の文字化け完全防止）
 # ==========================================
 zen_to_han = str.maketrans("０１２３４５６７８９", "0123456789")
 
 
-def decode_html_bytes(raw_bytes):
-    """JR西日本などのShift_JIS/CP932、UTF-8、EUC-JPを自動判別して完璧にデコード"""
-    # 1. meta charset宣言を探す
-    match = re.search(
-        rb'charset\s*=\s*["\']?\s*([a-zA-Z0-9_\-]+)', raw_bytes[:4096]
-    )
-    detected_enc = None
-    if match:
-        enc = match.group(1).decode("ascii", errors="ignore").lower()
-        if enc in ["shift_jis", "sjis", "shift-jis", "x-sjis", "ms932", "windows-31j"]:
-            detected_enc = "cp932"
-        elif enc in ["euc-jp", "euc_jp", "x-euc-jp"]:
-            detected_enc = "euc_jp"
-        elif enc in ["utf-8", "utf8"]:
-            detected_enc = "utf-8"
+def decode_html_bytes(raw_bytes, url=""):
+    """JR西日本のCP932/Shift_JIS、UTF-8、EUC-JPを自動判別して完璧にデコード"""
+    enc_candidates = []
+
+    # JR西日本ドメインの場合はCP932（Shift_JIS拡張）を最優先
+    if "westjr.co.jp" in url:
+        enc_candidates.extend(["cp932", "shift_jis"])
+
+    # meta charset属性から探索
+    m = re.search(rb'<meta[^>]+charset=["\']?\s*([a-zA-Z0-9_\-]+)', raw_bytes[:8192], re.IGNORECASE)
+    if not m:
+        m = re.search(rb'charset\s*=\s*["\']?\s*([a-zA-Z0-9_\-]+)', raw_bytes[:8192], re.IGNORECASE)
+    if m:
+        detected = m.group(1).decode("ascii", errors="ignore").lower()
+        if detected in ["shift_jis", "sjis", "shift-jis", "x-sjis", "ms932", "windows-31j"]:
+            enc_candidates.append("cp932")
+        elif detected in ["euc-jp", "euc_jp", "x-euc-jp"]:
+            enc_candidates.append("euc_jp")
+        elif detected in ["utf-8", "utf8"]:
+            enc_candidates.append("utf-8")
         else:
-            detected_enc = enc
+            enc_candidates.append(detected)
 
-    # 試行候補
-    candidate_encs = []
-    if detected_enc:
-        candidate_encs.append(detected_enc)
-    for c in ["utf-8", "cp932", "euc_jp", "iso-2022-jp"]:
-        if c not in candidate_encs:
-            candidate_encs.append(c)
+    for default_enc in ["utf-8", "cp932", "euc_jp", "shift_jis"]:
+        if default_enc not in enc_candidates:
+            enc_candidates.append(default_enc)
 
-    for enc in candidate_encs:
+    best_decoded = None
+    for enc in enc_candidates:
         try:
-            return raw_bytes.decode(enc)
+            text = raw_bytes.decode(enc)
+            # 文字化け特有の文字（縺、繧、など）が含まれていないかチェック
+            mojibake_count = len(re.findall(r'[縺繧繝譬諷]', text))
+            if mojibake_count == 0:
+                return text
+            if best_decoded is None:
+                best_decoded = text
         except (UnicodeDecodeError, LookupError):
             continue
 
-    return raw_bytes.decode("utf-8", errors="replace")
+    return best_decoded if best_decoded else raw_bytes.decode("utf-8", errors="replace")
 
 
 def parse_date_text(raw_text, current_year):
@@ -399,10 +405,10 @@ def parse_date_text(raw_text, current_year):
 
 
 # ==========================================
-# 3. 公式サイト直接巡回（公式発表専用・PR TIMES等完全排除）
+# 3. 公式サイト直接巡回（404・403リンク完全防止）
 # ==========================================
 def fetch_official_releases(company_info, start_date, end_date):
-    """各社公式ホームページからのみ直接「公式発表」を取得"""
+    """各社公式ホームページから「公式発表」を取得"""
     results = []
     seen_urls = set()
     current_year = datetime.date.today().year
@@ -424,6 +430,7 @@ def fetch_official_releases(company_info, start_date, end_date):
             with urllib.request.urlopen(req, context=ctx, timeout=8) as res:
                 raw_bytes = res.read()
                 content_encoding = res.headers.get("Content-Encoding", "").lower()
+                final_base_url = res.geturl()  # リダイレクト後の正確なベースURL
 
             if content_encoding == "gzip" or raw_bytes[:2] == b"\x1f\x8b":
                 try:
@@ -436,8 +443,8 @@ def fetch_official_releases(company_info, start_date, end_date):
                 except Exception:
                     pass
 
-            # ★ 文字化け防止デコード
-            html_text = decode_html_bytes(raw_bytes)
+            # ★ JR西日本等に特化したデコード
+            html_text = decode_html_bytes(raw_bytes, url=url)
 
             # RSSフィード（東京メトロ等）の場合
             if "<rss" in html_text or "<feed" in html_text:
@@ -476,17 +483,19 @@ def fetch_official_releases(company_info, start_date, end_date):
             )
 
             for m in a_matches:
-                raw_href = m.group(1).strip()
-                if raw_href.startswith(("javascript:", "#", "mailto:", "tel:")):
+                # リンクURLの徹底クレンジング（空白や改行を除去）
+                raw_href = m.group(1).strip().strip("'\"").replace(" ", "").replace("\r", "").replace("\n", "").replace("\t", "")
+                if not raw_href or raw_href.startswith(("javascript:", "#", "mailto:", "tel:")):
                     continue
 
-                full_url = urllib.parse.urljoin(url, raw_href)
+                # リダイレクト後のURLを基準に結合（404リンク防止）
+                full_url = urllib.parse.urljoin(final_base_url, raw_href)
                 if full_url in seen_urls:
                     continue
 
-                # ★ 自社公式ドメイン以外のリンク（SNSシェアや広告等）は除外
+                # 自社公式ドメイン配下のリンクのみに厳格限定
                 parsed_u = urllib.parse.urlparse(full_url)
-                if not any(d in parsed_u.netloc.lower() for d in [company_info["official_domain"], "westjr.co.jp", "jreast.co.jp", "kintetsu"]):
+                if not any(d in parsed_u.netloc.lower() for d in [company_info["official_domain"], "westjr.co.jp", "jreast.co.jp", "kintetsu.co.jp"]):
                     continue
 
                 inside_html = m.group(2)
@@ -508,14 +517,12 @@ def fetch_official_releases(company_info, start_date, end_date):
                 raw_t = html.unescape(raw_t)
                 clean_t = re.sub(r"\s+", " ", raw_t).strip()
 
-                # ★「一覧を見る」などの汎用文言を徹底排除
+                # 「一覧を見る」などの汎用文言を排除し、見出しを救出
                 if clean_t in GENERIC_LINK_TEXTS or len(clean_t) < 5:
-                    # 見出しタグ <h1>〜<h5> または <dt><dd>等から本当のタイトルを救出
                     h_m = re.findall(r"<h[1-5][^>]*>(.*?)</h[1-5]>", surrounding, flags=re.DOTALL | re.IGNORECASE)
                     if h_m:
                         clean_t = re.sub(r"<[^>]+>", "", h_m[-1]).strip()
                     else:
-                        # 周辺テキストから探しても汎用文言しか取れない場合はスキップ
                         comb = re.sub(r"<[^>]+>", " ", surrounding)
                         comb = html.unescape(comb)
                         lines = [line.strip() for line in comb.split() if len(line.strip()) > 6 and line.strip() not in GENERIC_LINK_TEXTS]
@@ -527,7 +534,6 @@ def fetch_official_releases(company_info, start_date, end_date):
                 if clean_t in GENERIC_LINK_TEXTS or len(clean_t) < 5:
                     continue
 
-                # 先頭の日付や記号を削除
                 clean_t = re.sub(
                     r"^(?:令和\s*[0-9０-９元]+年|\d{4}年|\d{1,2}月|\d{1,2}日|[\d\.\/\-\s・\|｜【】\[\]\(\)])+",
                     "",
@@ -560,10 +566,10 @@ def fetch_official_releases(company_info, start_date, end_date):
 
 
 # ==========================================
-# 4. 一般ニュース巡回（一般サイト専用・ダイレクトリンク）
+# 4. 一般ニュース巡回（一般サイト専用）
 # ==========================================
 def fetch_general_news(query, start_date, end_date):
-    """一般ニュースメディア（Yahoo!ニュース、新聞、鉄道コム等）から記事をダイレクト取得"""
+    """一般ニュースメディアから記事を取得"""
     results = []
     encoded_q = urllib.parse.quote(query)
     rss_url = f"https://www.bing.com/news/search?q={encoded_q}&format=rss&mkt=ja-JP"
@@ -595,11 +601,11 @@ def fetch_general_news(query, start_date, end_date):
                 continue
 
             raw_title = title_el.text or ""
-            link = link_el.text or ""
+            link = (link_el.text or "").strip()
             pubdate_str = pubdate_el.text if pubdate_el is not None else ""
             desc = desc_el.text or ""
 
-            if "news.google.com" in link:
+            if not link or "news.google.com" in link:
                 continue
 
             item_date = None
@@ -644,15 +650,11 @@ def fetch_general_news(query, start_date, end_date):
 # 5. 統合フェッチ（公式発表 ＋ 一般ニュース）
 # ==========================================
 def fetch_company_all(company_info, start_date, end_date):
-    # 1. 公式ホームページから直接取得（公式発表）
     official_list = fetch_official_releases(company_info, start_date, end_date)
-
-    # 2. 一般ニュースサイトから取得（ニュース）
     general_list = []
     if "query" in company_info:
         general_list = fetch_general_news(company_info["query"], start_date, end_date)
 
-    # 重複排除して統合
     combined = list(official_list)
     seen_urls = {item["url"] for item in official_list}
     for g in general_list:
@@ -689,7 +691,6 @@ with st.sidebar:
         "会社分類", ["すべて", "JR", "私鉄", "近鉄グループ"]
     )
 
-    # ★ご指定通りの3分類
     selected_type = st.radio(
         "発表・記事の種別",
         ["すべて", "公式発表", "ニュース（一般サイト）"],
@@ -725,7 +726,7 @@ if run_button:
     st.toast("全社の巡回・データ取得が完了しました！", icon="✅")
 
 # ==========================================
-# 8. 結果の表示（全会社を東から西順に表示）
+# 8. 結果の表示（「すべて」の時は公式発表が上、ニュースが下）
 # ==========================================
 if not st.session_state.fetched_data and not run_button:
     st.info(
@@ -743,24 +744,35 @@ else:
         if selected_category == "近鉄グループ" and "近鉄グループ" not in comp["name"]:
             continue
 
-        items = st.session_state.fetched_data.get(comp["name"], [])
-
-        # ★発表種別（すべて／公式発表／ニュース（一般サイト））の厳密な絞り込み
-        if selected_type == "公式発表":
-            items = [item for item in items if item["type"] == "公式発表"]
-        elif selected_type == "ニュース（一般サイト）":
-            items = [item for item in items if item["type"] == "ニュース（一般サイト）"]
+        all_items = st.session_state.fetched_data.get(comp["name"], [])
 
         # キーワード検索
         if search_keyword:
             kw = search_keyword.lower()
-            items = [
+            all_items = [
                 item
-                for item in items
+                for item in all_items
                 if kw in item["title"].lower()
                 or kw in item["summary"].lower()
                 or kw in comp["name"].lower()
             ]
+
+        # ★ご要望のソート仕様：
+        # 「すべて」選択時は「公式発表」を上（最新順）、「ニュース」を下（最新順）に並べる
+        official_items = [i for i in all_items if i["type"] == "公式発表"]
+        general_items = [i for i in all_items if i["type"] == "ニュース（一般サイト）"]
+
+        official_items.sort(key=lambda x: x["date"], reverse=True)
+        general_items.sort(key=lambda x: x["date"], reverse=True)
+
+        # 選択された種別に応じた表示リストの構築
+        if selected_type == "公式発表":
+            display_items = official_items
+        elif selected_type == "ニュース（一般サイト）":
+            display_items = general_items
+        else:
+            # 「すべて」の場合：公式発表が上、ニュースが下（それぞれ日付が新しい順）
+            display_items = official_items + general_items
 
         # セクションヘッダー（JR / 私鉄）
         if comp["category"] != current_category:
@@ -779,23 +791,16 @@ else:
             unsafe_allow_html=True,
         )
 
-        if not items:
+        if not display_items:
             type_label = f"（{selected_type}）" if selected_type != "すべて" else ""
             st.info(f"📅 指定期間・条件内の発表{type_label}は **なし** です。")
             st.write("")
         else:
-            # 日付が新しい順にソートして表示
-            items.sort(key=lambda x: x["date"], reverse=True)
-            for item in items:
-                # バッジ表示
-                type_badge = (
-                    "📢 **公式発表**"
-                    if item["type"] == "公式発表"
-                    else "📰 **ニュース（一般サイト）**"
-                )
-                file_badge = (
-                    "🟥 **[PDF資料]**" if item["is_pdf"] else "🌐 **[Web発表]**"
-                )
+            # カード形式で順次描画
+            for item in display_items:
+                is_official = item["type"] == "公式発表"
+                type_badge = "📢 **公式発表**" if is_official else "📰 **ニュース（一般サイト）**"
+                file_badge = "🟥 **[PDF資料]**" if item["is_pdf"] else "🌐 **[Web発表]**"
 
                 with st.container(border=True):
                     col_left, col_right = st.columns([1, 4])
@@ -805,10 +810,14 @@ else:
                         st.markdown(file_badge)
                         st.caption(f"情報元: {item['source']}")
                     with col_right:
-                        # 公式発表なら公式HP/PDF、ニュースなら一般メディアの直リンク
-                        st.markdown(f"##### [{item['title']}]({item['url']})")
+                        # 404やアクセス拒否を防ぐため、rel属性を付与したリンク
+                        st.markdown(
+                            f"##### <a href='{item['url']}' target='_blank' rel='noopener noreferrer'>{item['title']}</a>",
+                            unsafe_allow_html=True,
+                        )
                         st.write(f"**主な内容:** {item['summary']}")
                         st.markdown(
-                            f"🔗 **掲載ページ:** [{item['url']}]({item['url']})"
+                            f"🔗 **掲載ページ:** <a href='{item['url']}' target='_blank' rel='noopener noreferrer'>{item['url']}</a>",
+                            unsafe_allow_html=True,
                         )
             st.write("")
