@@ -1,8 +1,22 @@
-import urllib.request
-import urllib.parse
-import re
+import sys
+import subprocess
+import os
+
+# ==========================================
+# ★強力な解析エンジンの自動インストール（エラー回避用）
+# ==========================================
+try:
+    import requests
+    from bs4 import BeautifulSoup
+except ImportError:
+    # サーバーに部品が無い場合は自動でインストールする
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "beautifulsoup4", "requests", "python-dateutil"])
+    import requests
+    from bs4 import BeautifulSoup
+
 import datetime
-import html
+import re
+from urllib.parse import urljoin
 import streamlit as st
 
 # ページ設定
@@ -17,17 +31,16 @@ st.caption("指定した期間内の各社の公式ページ（持株会社含�
 
 # ==========================================
 # 1. 鉄道会社・持株会社のマスターデータ
+# 各社の「ニュース一覧ページ」と「トップページ」を網羅して巡回します
 # ==========================================
 COMPANIES = [
-    # --- JR各社 ---
-    {"category": "JR", "name": "JR北海道", "region": "北海道", "urls": ["https://www.jrhokkaido.co.jp/CM/info/press/presstop.html"]},
-    {"category": "JR", "name": "JR東日本", "region": "東日本", "urls": ["https://www.jreast.co.jp/company/"]},
-    {"category": "JR", "name": "JR東海", "region": "東海", "urls": ["https://jr-central.co.jp/"]},
+    {"category": "JR", "name": "JR北海道", "region": "北海道", "urls": ["https://www.jrhokkaido.co.jp/CM/info/press/presstop.html", "https://www.jrhokkaido.co.jp/"]},
+    {"category": "JR", "name": "JR東日本", "region": "東日本", "urls": ["https://www.jreast.co.jp/company/", "https://www.jreast.co.jp/"]},
+    {"category": "JR", "name": "JR東海", "region": "東海", "urls": ["https://jr-central.co.jp/news/release/", "https://jr-central.co.jp/"]},
     {"category": "JR", "name": "JR西日本", "region": "西日本", "urls": ["https://www.westjr.co.jp/press/"]},
     {"category": "JR", "name": "JR四国", "region": "四国", "urls": ["https://www.jr-shikoku.co.jp/03_news/press/"]},
     {"category": "JR", "name": "JR九州", "region": "九州", "urls": ["https://www.jrkyushu.co.jp/news/release/index.html"]},
     
-    # --- 私鉄・メトロ各社（東から順） ---
     {"category": "私鉄（メトロ含む）", "name": "東武鉄道", "region": "関東", "urls": ["https://www.tobu.co.jp/newsrelease/"]},
     {"category": "私鉄（メトロ含む）", "name": "西武鉄道（西武HD含む）", "region": "関東", "urls": ["https://www.seiburailway.jp/newsroom/news/", "https://www.seibuholdings.co.jp/news/"]},
     {"category": "私鉄（メトロ含む）", "name": "京成電鉄", "region": "関東", "urls": ["https://www.keisei.co.jp/keisei/kouhou/news/index.php"]},
@@ -48,62 +61,42 @@ COMPANIES = [
 ]
 
 # ==========================================
-# 2. 強力なWebサイト解析（スクレイピング）エンジン
+# 2. BeautifulSoupを使った高精度スクレイピングエンジン
 # ==========================================
 def fetch_company_news(urls, start_date, end_date):
-    """指定された複数のURL（子会社＋親会社）にアクセスし、期間内のニュースを抽出する"""
     results = []
+    seen_urls = set()
     current_year = datetime.date.today().year
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
 
-    seen_urls = set()
     for url in urls:
         try:
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=10) as res:
-                html_bytes = res.read()
-                try:
-                    html_content = html_bytes.decode('utf-8')
-                except UnicodeDecodeError:
-                    html_content = html_bytes.decode('shift_jis', errors='ignore')
+            res = requests.get(url, headers=headers, timeout=10)
+            res.encoding = res.apparent_encoding # 文字化け対策
+            soup = BeautifulSoup(res.text, "html.parser")
 
-            # スクリプトとスタイルタグを削除してプレーンテキストにしやすくする
-            clean_html = re.sub(r'<script.*?>.*?</script>', '', html_content, flags=re.DOTALL|re.IGNORECASE)
-            clean_html = re.sub(r'<style.*?>.*?</style>', '', clean_html, flags=re.DOTALL|re.IGNORECASE)
-
-            # 記事ブロックになりそうなタグでHTMLを分割
-            blocks = re.split(r'</?(?:div|li|tr|dd|p|article|section|ul|dl|dt)[^>]*>', clean_html, flags=re.IGNORECASE)
-
-            for block in blocks:
-                # <a>タグ（リンク）を探す
-                a_match = re.search(r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', block, flags=re.IGNORECASE|re.DOTALL)
-                if not a_match:
+            # ページ内のすべてのリンク(aタグ)をチェック
+            for a_tag in soup.find_all("a", href=True):
+                href = a_tag["href"]
+                # 不要なシステムリンクをスキップ
+                if href.startswith("javascript:") or href.startswith("#"):
                     continue
 
-                href = a_match.group(1)
-                # HTMLタグを取り除いて純粋なテキストにする
-                link_text = re.sub(r'<[^>]+>', '', a_match.group(2)).strip()
-                link_text = html.unescape(link_text)
+                # リンクを囲んでいる親要素（リストや行など）を取得して、日付があるか確認
+                parent = a_tag.find_parent(["li", "tr", "dd", "div", "article", "p", "dt"])
+                if parent:
+                    block_text = parent.get_text(separator=" ", strip=True)
+                else:
+                    block_text = a_tag.get_text(separator=" ", strip=True)
 
-                block_text = re.sub(r'<[^>]+>', '', block)
-                block_text = html.unescape(block_text)
-                block_text = re.sub(r'\s+', ' ', block_text).strip()
-
-                # リンク自体の文字が短すぎる場合は、周辺のテキストを見出しとして採用
-                title_text = link_text if len(link_text) > 8 else block_text
-
-                if len(title_text) < 5 or title_text in ["一覧", "トップへ戻る", "詳細はこちら", "次へ", "前へ"]:
+                if len(block_text) < 5:
                     continue
 
-                full_url = urllib.parse.urljoin(url, href)
-                if full_url.startswith("javascript:") or full_url.startswith("#"):
-                    continue
-
-                # 日付の抽出
+                # --- 日付の抽出 ---
                 found_date = None
-                # yyyy.mm.dd または yyyy年mm月dd日 のパターン
+                # yyyy.mm.dd または yyyy年mm月dd日
                 m1 = re.search(r'(202[0-9])[年\./]\s*(1[0-2]|0?[1-9])[月\./]\s*(3[01]|[12][0-9]|0?[1-9])', block_text)
                 if m1:
                     try:
@@ -111,35 +104,45 @@ def fetch_company_news(urls, start_date, end_date):
                     except ValueError:
                         pass
                 else:
-                    # mm.dd または mm月dd日 のパターン（今年は自動補完）
-                    m2 = re.search(r'(1[0-2]|0?[1-9])[月\./]\s*(3[01]|[12][0-9]|0?[1-9])[日]?', block_text)
+                    # mm.dd または mm月dd日（年は省略されている）
+                    m2 = re.search(r'(?<!\d)(1[0-2]|0?[1-9])[月\./]\s*(3[01]|[12][0-9]|0?[1-9])[日]?(?!\d)', block_text)
                     if m2:
                         try:
                             found_date = datetime.date(current_year, int(m2.group(1)), int(m2.group(2)))
                         except ValueError:
                             pass
 
-                # 指定期間内の日付が検出できたらリストに追加
+                # --- 期間内の発表として登録 ---
                 if found_date and (start_date <= found_date <= end_date):
+                    full_url = urljoin(url, href)
+                    
+                    # すでに同じURLを登録済みの場合はスキップ
                     if full_url not in seen_urls:
                         seen_urls.add(full_url)
                         
                         is_pdf = bool(re.search(r'\.pdf$', full_url, re.IGNORECASE) or "PDF" in block_text.upper())
                         doc_type = "広報発表" if ("release" in full_url.lower() or "press" in full_url.lower() or "ニュースリリース" in block_text) else "ニュース"
-
-                        # 見出しの先頭にある日付テキストを削除してスッキリさせる
+                        
+                        # リンクの文字そのものをタイトルにするが、短すぎる（「PDF」だけ等）場合は全体を採用
+                        link_text = a_tag.get_text(strip=True)
+                        title_text = link_text if len(link_text) > 8 else block_text
+                        
+                        # 先頭についている日付や記号を取り除いて綺麗にする
                         clean_title = re.sub(r'^(202[0-9])[年\./]\s*(1[0-2]|0?[1-9])[月\./]\s*(3[01]|[12][0-9]|0?[1-9])日?\s*', '', title_text)
                         clean_title = re.sub(r'^(1[0-2]|0?[1-9])[月\./]\s*(3[01]|[12][0-9]|0?[1-9])日?\s*', '', clean_title)
-
-                        results.append({
-                            "date": found_date,
-                            "type": doc_type,
-                            "title": clean_title,
-                            "url": full_url,
-                            "is_pdf": is_pdf,
-                        })
+                        clean_title = re.sub(r'^[\s・\|｜]+', '', clean_title)
+                        
+                        # 短すぎるゴミデータを弾く
+                        if len(clean_title) >= 5 and clean_title not in ["一覧", "トップへ戻る", "詳細はこちら", "次へ", "前へ"]:
+                            results.append({
+                                "date": found_date,
+                                "type": doc_type,
+                                "title": clean_title,
+                                "url": full_url,
+                                "is_pdf": is_pdf,
+                            })
         except Exception:
-            # サイトへのアクセスに失敗した場合はスキップ（表示側で「なし」になる）
+            # ページが存在しない・アクセス拒否等の場合はエラーを出さずに次へ進む
             pass
 
     return results
@@ -166,7 +169,6 @@ with st.sidebar:
 
     st.markdown("---")
     st.write("**2. 絞り込み表示**")
-    # 「近鉄」の専用ボタンを追加
     selected_category = st.radio("会社分類", ["すべて", "JR", "私鉄（メトロ含む）", "近鉄（近畿日本鉄道のみ）"])
     search_keyword = st.text_input("キーワード検索", "")
     
@@ -184,9 +186,9 @@ if run_button:
     progress_bar = st.progress(0)
     status_text = st.empty()
     
+    # BeautifulSoupで各社のサイトを実際に巡回
     for i, comp in enumerate(COMPANIES):
-        status_text.text(f"巡回中: {comp['name']} ({i+1}/{len(COMPANIES)}) ...")
-        # 会社本体とHD（持株会社）のURLを巡回
+        status_text.text(f"巡回・解析中: {comp['name']} ({i+1}/{len(COMPANIES)}) ...")
         news_items = fetch_company_news(comp["urls"], start_date, end_date)
         new_data[comp["name"]] = news_items
         progress_bar.progress((i + 1) / len(COMPANIES))
@@ -197,17 +199,15 @@ if run_button:
     st.toast("全社の巡回・データ取得が完了しました！", icon="✅")
 
 # ==========================================
-# 5. 結果の表示（必ず全会社を表示するロジック）
+# 5. 結果の表示（全会社を必ず表示）
 # ==========================================
 if not st.session_state.fetched_data and not run_button:
     st.info("👈 左のサイドバーで期間を指定し、「公式サイトを巡回して取得」ボタンを押してください。")
 else:
     current_category = None
 
-    # COMPANIESリストの順番（東から西）に沿って必ずループを回す
     for comp in COMPANIES:
-        
-        # --- サイドバーの絞り込み処理 ---
+        # サイドバーの絞り込み処理
         if selected_category == "JR" and comp["category"] != "JR":
             continue
         if selected_category == "私鉄（メトロ含む）" and comp["category"] != "私鉄（メトロ含む）":
@@ -215,16 +215,14 @@ else:
         if selected_category == "近鉄（近畿日本鉄道のみ）" and "近畿日本鉄道" not in comp["name"]:
             continue
             
-        # 取得したニュースリストを取り出す
         items = st.session_state.fetched_data.get(comp["name"], [])
         
-        # キーワード検索でさらに絞り込む
+        # キーワード検索
         if search_keyword:
             kw = search_keyword.lower()
             items = [item for item in items if kw in item["title"].lower() or kw in comp["name"].lower()]
 
-        # --- 画面の描画 ---
-        # JRと私鉄の区切り線を引く
+        # 区切りと見出し
         if comp["category"] != current_category:
             if current_category is not None:
                 st.write("<br><br>", unsafe_allow_html=True)
@@ -232,18 +230,16 @@ else:
             st.markdown(f"## 【 {current_category}各社 】（東から西順）")
             st.divider()
 
-        # 会社名と公式ページへのリンクを表示（ここは必ず表示される）
+        # 会社名（必ず表示）
         main_url = comp["urls"][0]
         hd_label = " ＆ 持株会社" if len(comp["urls"]) > 1 else ""
         st.markdown(f"### 🏢 {comp['name']} <span style='font-size:0.8em; color:gray;'>（{comp['region']}）</span> [公式ページ{hd_label} ↗]({main_url})", unsafe_allow_html=True)
 
-        # 発表が「ある」か「ない（なし）」かで分岐
         if not items:
-            # 発表がない場合は「なし」と表示
             st.info("📅 指定期間内の発表は **なし** です。")
             st.write("")
         else:
-            # 発表がある場合は新しい日付順にソートしてカードで表示
+            # 日付が新しい順にソートして表示
             items.sort(key=lambda x: x["date"], reverse=True)
             for item in items:
                 type_badge = "📢 **広報発表**" if item["type"] == "広報発表" else "📰 **ニュース**"
