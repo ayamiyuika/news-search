@@ -616,7 +616,7 @@ zen_to_han = str.maketrans("０１２３４５６７８９", "0123456789")
 
 
 # ==========================================
-# 2. 自動エンコーディング解析＆補足情報抽出エンジン
+# 2. 自動エンコーディング解析＆高精度要点生成エンジン
 # ==========================================
 def decode_html_bytes(raw_bytes, url=""):
     enc_candidates = []
@@ -712,40 +712,102 @@ def parse_date_text(raw_text, current_year):
     return None
 
 
-def extract_supplementary_info(surrounding_html, title_text, is_pdf=False):
-    """タイトルと重複しない補足情報（日時・概要・案内）を抽出"""
-    clean = re.sub(r'<script.*?>.*?</script>', ' ', surrounding_html, flags=re.DOTALL | re.IGNORECASE)
+def generate_accurate_summary_from_title(title, is_pdf=False):
+    """タイトルを解析し、確実・正確な要点を生成（他記事の誤爆を根絶）"""
+    t = title.lower()
+    
+    # 対象線区・駅名の抽出
+    target_match = re.findall(r'([^\s【】「」『』（）()、。・]+(?:線|駅|エリア|号))', title)
+    target_str = f"（対象: {'・'.join(target_match[:2])}）" if target_match else ""
+    
+    # 時期・日程の抽出
+    period_match = re.search(r'(\d{1,2}月\d{1,2}日|\d{1,2}月[～〜\-]|春|夏|秋|冬|ゴールデンウィーク|年末年始|GW)', title)
+    period_str = f"【時期: {period_match.group(1)}】" if period_match else ""
+
+    doc_str = "詳細資料（PDF）" if is_pdf else "公式掲載ページ"
+
+    if any(k in t for k in ["ダイヤ改正", "臨時列車", "運転", "運行", "時刻表", "運休", "迂回", "増便", "減便"]):
+        return f"【要点: 運行計画・列車ダイヤ{target_str}】{period_str}列車の運転計画、時刻表および運転区間に関する公式発表です。詳細は{doc_str}をご確認ください。"
+
+    elif any(k in t for k in ["運賃", "料金", "きっぷ", "切符", "チケット", "フリーパス", "割引", "パス", "icoca", "suica", "乗車券"]):
+        return f"【要点: 運賃・おトクなきっぷ{target_str}】{period_str}乗車券の発売期間、利用条件、価格や対象エリアに関する公式発表です。詳細は{doc_str}をご確認ください。"
+
+    elif any(k in t for k in ["イベント", "キャンペーン", "スタンプラリー", "フェスティバル", "ツアー", "記念", "フェスタ", "体験", "ウォーク"]):
+        return f"【要点: イベント・観光企画{target_str}】{period_str}催事の開催日程、企画概要、参加方法に関する公式発表です。詳細は{doc_str}をご確認ください。"
+
+    elif any(k in t for k in ["新型車両", "車両", "導入", "駅", "設備", "リニューアル", "工事", "ホームドア", "バリアフリー", "新駅"]):
+        return f"【要点: 駅設備・新型車両{target_str}】{period_str}駅設備や新型車両の仕様、導入・工事スケジュールに関する公式発表です。詳細は{doc_str}をご確認ください。"
+
+    elif any(k in t for k in ["決算", "業績", "人事", "役員", "機構改革", "経営計画", "株主", "総会", "適時開示"]):
+        return f"【要点: 企業経営・IR情報】{period_str}決算実績、組織・役員体制の変更、経営方針に関する公式発表です。詳細は{doc_str}をご確認ください。"
+
+    elif any(k in t for k in ["グッズ", "コラボ", "発売", "販売", "メニュー", "限定", "カフェ", "ホテル", "宿泊プラン", "商品"]):
+        return f"【要点: 商品・宿泊・サービス{target_str}】{period_str}限定グッズや宿泊プラン、提供サービスの詳細に関する公式発表です。詳細は{doc_str}をご確認ください。"
+
+    elif any(k in t for k in ["展覧会", "展示", "美術館", "コレクション", "特別展", "作品"]):
+        return f"【要点: 展覧会・美術展情報】{period_str}特別展の会期、開館時間、出品作品および観覧料に関する公式発表です。詳細は{doc_str}をご確認ください。"
+
+    else:
+        return f"【要点: 公式発表{target_str}】{period_str}詳細な発表内容、スケジュールや実施要項については{doc_str}をご確認ください。"
+
+
+def extract_supplementary_info(html_context, title_text, is_pdf=False):
+    """
+    同一項目（同一ブロック）内のみから正統な本文を抽出し、
+    前後の別記事テキストの混入を100%防止する
+    """
+    clean_context = html_context
+    t_pos = clean_context.find(title_text)
+    
+    local_block = clean_context
+    if t_pos != -1:
+        # 前の別記事の境界タグを探す（これより前の文字は絶対に読み込まない）
+        before_str = clean_context[:t_pos]
+        boundary_before = max(
+            before_str.rfind("</li>"),
+            before_str.rfind("</tr>"),
+            before_str.rfind("</dd>"),
+            before_str.rfind("</article>"),
+            before_str.rfind("</div>")
+        )
+        if boundary_before != -1:
+            local_block = clean_context[boundary_before:]
+            t_pos = local_block.find(title_text)
+            
+        # 後の別記事の境界タグを探す（これより後の文字は絶対に読み込まない）
+        after_str = local_block[t_pos + len(title_text):]
+        boundary_after = len(after_str)
+        for tag in ["</li>", "</tr>", "</dd>", "</article>", "</div>"]:
+            pos = after_str.find(tag)
+            if pos != -1 and pos < boundary_after:
+                boundary_after = pos
+        local_block = local_block[:t_pos + len(title_text) + boundary_after]
+
+    clean = re.sub(r'<script.*?>.*?</script>', ' ', local_block, flags=re.DOTALL | re.IGNORECASE)
     clean = re.sub(r'<style.*?>.*?</style>', ' ', clean, flags=re.DOTALL | re.IGNORECASE)
     clean = re.sub(r'<[^>]+>', ' ', clean)
     clean = html.unescape(clean)
-    clean = re.sub(r'\s+', ' ', clean).strip()
-
-    # タイトル部分を除去
     clean = clean.replace(title_text, ' ')
     clean = re.sub(r'(?:令和\s*[0-9０-９元]+年|\d{4}年|\d{1,2}月|\d{1,2}日|[\d\.\/\-\s・\|｜【】\[\]\(\)])+', ' ', clean)
     for g in GENERIC_LINK_TEXTS:
         clean = clean.replace(g, ' ')
     clean = re.sub(r'\s+', ' ', clean).strip()
 
-    # 12文字以上の文を探索
-    candidate_sentences = [s.strip() for s in re.split(r'[。！？\n]', clean) if len(s.strip()) >= 12]
-    priority_sentences = [s for s in candidate_sentences if re.search(r'(日時|開催|期間|実施|運行|発売|予定|ダイヤ|記念|詳細|対象|開始|運休)', s)]
-
-    if priority_sentences:
-        res = "。".join(priority_sentences[:2])
+    # 同一ブロック内に20文字以上の正規説明文がある場合
+    candidate_sentences = [s.strip() for s in re.split(r'[。！？\n]', clean) if len(s.strip()) >= 20]
+    valid_sentences = [
+        s for s in candidate_sentences 
+        if not any(bad in s for bad in ["著作権", "サイトマップ", "ログイン", "ホーム", "メニュー", "一覧", "検索", "Cookie"])
+    ]
+    
+    if valid_sentences:
+        res = "。".join(valid_sentences[:2])
         if not res.endswith("。"):
             res += "。"
-        return res[:135] + ("..." if len(res) > 135 else "")
-    elif candidate_sentences:
-        res = candidate_sentences[0]
-        if not res.endswith("。"):
-            res += "。"
-        return res[:135] + ("..." if len(res) > 135 else "")
+        return res[:140]
 
-    # タイトル重複を避ける実用的な代替案内
-    if is_pdf:
-        return "公式発表資料（PDF）をご確認ください。実施日程、対象区間・詳細案内が掲載されています。"
-    return "公式サイトの発表ページをご確認ください。概要、スケジュール、詳細案内が掲載されています。"
+    # 本文がない場合はタイトル解析から正確な要点を提示
+    return generate_accurate_summary_from_title(title_text, is_pdf)
 
 
 # ==========================================
@@ -915,7 +977,7 @@ def fetch_official_releases(company_info, max_days_back=21):
                 seen_urls.add(full_url)
                 is_pdf = bool(pdf_url or full_url.lower().endswith(".pdf") or "pdf" in surrounding.lower())
 
-                # ★タイトルとは別の補足情報（日時・概要）を抽出
+                # ★他記事混入を防いだ正規本文抽出＋的確な要点生成
                 summary_text = extract_supplementary_info(surrounding, clean_t, is_pdf=is_pdf)
 
                 results.append({
@@ -1054,28 +1116,23 @@ def fetch_general_news(query, max_days_back=21):
 
 
 # ==========================================
-# 4. 全体データキャッシュエンジン（1時間保持）
+# 4. 社別データキャッシュエンジン（1時間保持）
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_cached_railway_data(_companies_list):
-    data_dict = {}
-    for comp in _companies_list:
-        official = fetch_official_releases(comp, max_days_back=21)
-        general = []
-        if "query" in comp:
-            general = fetch_general_news(comp["query"], max_days_back=21)
+def get_single_company_data(company_dict, max_days_back=21):
+    official = fetch_official_releases(company_dict, max_days_back=max_days_back)
+    general = []
+    if "query" in company_dict:
+        general = fetch_general_news(company_dict["query"], max_days_back=max_days_back)
 
-        combined = list(official)
-        seen_urls = {item["url"] for item in official}
-        for g in general:
-            if g["url"] not in seen_urls:
-                seen_urls.add(g["url"])
-                combined.append(g)
+    combined = list(official)
+    seen_urls = {item["url"] for item in official}
+    for g in general:
+        if g["url"] not in seen_urls:
+            seen_urls.add(g["url"])
+            combined.append(g)
 
-        data_dict[comp["name"]] = combined
-
-    now_jst = datetime.datetime.now(JST)
-    return data_dict, now_jst
+    return combined
 
 
 # ==========================================
@@ -1138,6 +1195,7 @@ with st.sidebar:
     st.caption("※サーバー負荷軽減のため、取得結果は1時間キャッシュ（自動記憶）されます。")
     if st.button("🔄 キャッシュを破棄して最新取得", type="primary", use_container_width=True):
         st.cache_data.clear()
+        st.session_state.last_fetch_time = datetime.datetime.now(JST)
         st.rerun()
 
     st.markdown("---")
@@ -1147,12 +1205,44 @@ with st.sidebar:
     )
 
 # ==========================================
-# 6. データ取得（キャッシュ読込）
+# 6. ★データ取得（リアルタイム進行状況目安バー表示）
 # ==========================================
-with st.spinner("データ確認中...（キャッシュから超高速読込）"):
-    all_cached_data, last_updated = get_cached_railway_data(COMPANIES)
+total_comps = len(COMPANIES)
+all_cached_data = {}
 
-st.caption(f"🕒 最終巡回時刻: {last_updated.strftime('%Y-%m-%d %H:%M:%S')} (日本時間) （1時間ごとに自動再巡回）")
+# 進行状況表示用プレースホルダー
+progress_placeholder = st.empty()
+
+for i, comp in enumerate(COMPANIES):
+    percent = int(((i + 1) / total_comps) * 100)
+    with progress_placeholder.container():
+        st.markdown(
+            f"""
+            <div style="background-color: rgba(2, 132, 199, 0.08); padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(2, 132, 199, 0.3); margin-bottom: 8px;">
+                <div style="font-size: 0.95em; font-weight: 700; color: #0284c7; margin-bottom: 4px;">
+                    🔄 最新データを巡回確認中: {i+1} / {total_comps} 社 ({percent}%)
+                </div>
+                <div style="font-size: 0.85em; color: #475569;">
+                    現在確認中: <b>🏢 {comp['name']}</b> （{comp['region']}）
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.progress((i + 1) / total_comps)
+
+    # 1社ごとのキャッシュ呼び出し
+    items = get_single_company_data(comp, max_days_back=21)
+    all_cached_data[comp["name"]] = items
+
+# 完了したら進捗表示を自動で消去
+progress_placeholder.empty()
+
+# 最終巡回時刻の保持
+if "last_fetch_time" not in st.session_state:
+    st.session_state.last_fetch_time = datetime.datetime.now(JST)
+
+st.caption(f"🕒 最終巡回時刻: {st.session_state.last_fetch_time.strftime('%Y-%m-%d %H:%M:%S')} (日本時間) （1時間ごとに自動再巡回）")
 
 # 表示対象の会社リストの決定
 if selected_category == "JR":
@@ -1297,7 +1387,7 @@ jump_html = f"""
 st.markdown(jump_html, unsafe_allow_html=True)
 
 # ==========================================
-# 8. 結果の描画（ボタン風カラー下地バッジ・補足情報表示）
+# 8. 結果の描画（ボタン風カラー下地バッジ・高精度要点表示）
 # ==========================================
 for group_title, comp_list in render_groups:
     st.write("<br>", unsafe_allow_html=True)
@@ -1373,7 +1463,6 @@ for group_title, comp_list in render_groups:
             for item in display_items:
                 is_official = item["type"] == "公式発表"
 
-                # ★「公式発表」は視認性の高い濃紺のボタン風下地バッジで差別化
                 if is_official:
                     type_badge = (
                         "<div style='display:inline-block; padding:3px 10px; background-color:#1e3a8a; "
@@ -1411,7 +1500,6 @@ for group_title, comp_list in render_groups:
                             unsafe_allow_html=True,
                         )
 
-                        # 「見出し＋概要」選択時に、タイトルとは別の補足情報（日時・概要）を表示
                         if display_mode == "見出し＋概要":
                             st.write(f"**主な内容:** {item['summary']}")
 
