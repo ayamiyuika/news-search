@@ -24,7 +24,7 @@ st.caption(
 )
 
 # ==========================================
-# 1. 鉄道会社・持株会社・近鉄グループ各社のマスターデータ（東から西順）
+# 1. 鉄道会社・持株会社・近鉄グループ各社のマスターデータ
 # ==========================================
 COMPANIES = [
     # --- JR各社（東から西順） ---
@@ -219,20 +219,6 @@ COMPANIES = [
         "query": "名古屋鉄道 OR 名鉄",
     },
     {
-        "id": "kintetsu-main",
-        "category": "私鉄",
-        "name": "近鉄グループ（近鉄GHD＋近畿日本鉄道）",
-        "region": "関西",
-        "official_domains": ["kintetsu.co.jp", "kintetsu-g-hd.co.jp"],
-        "urls": [
-            "https://www.kintetsu.co.jp/all_news/whatsnew.html",
-            "https://www.kintetsu-g-hd.co.jp/news/",
-            "https://www.kintetsu.co.jp/",
-        ],
-        "query": "近畿日本鉄道 OR 近鉄グループホールディングス OR 近鉄",
-        "is_kintetsu_main": True,
-    },
-    {
         "id": "nankai",
         "category": "私鉄",
         "name": "南海電気鉄道",
@@ -313,10 +299,24 @@ COMPANIES = [
         ],
         "query": "西日本鉄道 OR 西鉄",
     },
-    # --- 近鉄グループ主要子会社・施設（追加分含む） ---
+    # --- 近鉄グループ（本体＋主要子会社・施設） ---
+    {
+        "id": "kintetsu-main",
+        "category": "近鉄グループ",
+        "name": "近鉄グループ（近鉄GHD＋近畿日本鉄道）",
+        "region": "関西",
+        "official_domains": ["kintetsu.co.jp", "kintetsu-g-hd.co.jp"],
+        "urls": [
+            "https://www.kintetsu.co.jp/all_news/whatsnew.html",
+            "https://www.kintetsu-g-hd.co.jp/news/",
+            "https://www.kintetsu.co.jp/",
+        ],
+        "query": "近畿日本鉄道 OR 近鉄グループホールディングス OR 近鉄",
+        "is_kintetsu_main": True,
+    },
     {
         "id": "kintetsu-fudosan",
-        "category": "近鉄グループ（主要子会社）",
+        "category": "近鉄グループ",
         "name": "近鉄不動産",
         "region": "関西",
         "official_domains": ["kintetsu-re.co.jp"],
@@ -328,21 +328,8 @@ COMPANIES = [
         "is_kintetsu_sub": True,
     },
     {
-        "id": "abeno-harukas",
-        "category": "近鉄グループ（主要子会社）",
-        "name": "あべのハルカス",
-        "region": "関西",
-        "official_domains": ["abenoharukas-300.jp"],
-        "urls": [
-            "https://www.abenoharukas-300.jp/news/",
-            "https://www.abenoharukas-300.jp/",
-        ],
-        "query": "あべのハルカス",
-        "is_kintetsu_sub": True,
-    },
-    {
         "id": "abeno-art-museum",
-        "category": "近鉄グループ（主要子会社）",
+        "category": "近鉄グループ",
         "name": "あべのハルカス美術館",
         "region": "関西",
         "official_domains": ["aham.jp"],
@@ -354,7 +341,7 @@ COMPANIES = [
     },
     {
         "id": "kintetsu-dept",
-        "category": "近鉄グループ（主要子会社）",
+        "category": "近鉄グループ",
         "name": "近鉄百貨店",
         "region": "関西",
         "official_domains": ["d-kintetsu.co.jp"],
@@ -367,7 +354,7 @@ COMPANIES = [
     },
     {
         "id": "kinsho-store",
-        "category": "近鉄グループ（主要子会社）",
+        "category": "近鉄グループ",
         "name": "近商ストア",
         "region": "関西",
         "official_domains": ["kinsho-store.co.jp"],
@@ -380,7 +367,7 @@ COMPANIES = [
     },
     {
         "id": "kaiyukan",
-        "category": "近鉄グループ（主要子会社）",
+        "category": "近鉄グループ",
         "name": "海遊館",
         "region": "関西",
         "official_domains": ["kaiyukan.com"],
@@ -393,7 +380,7 @@ COMPANIES = [
     },
     {
         "id": "kin-ei",
-        "category": "近鉄グループ（主要子会社）",
+        "category": "近鉄グループ",
         "name": "きんえい（アポロ・ルシアス）",
         "region": "関西",
         "official_domains": ["kin-ei.co.jp"],
@@ -406,7 +393,7 @@ COMPANIES = [
     },
     {
         "id": "kwe",
-        "category": "近鉄グループ（主要子会社）",
+        "category": "近鉄グループ",
         "name": "近鉄エクスプレス",
         "region": "関東・関西",
         "official_domains": ["kwe.co.jp", "kwe.com"],
@@ -419,7 +406,7 @@ COMPANIES = [
     },
     {
         "id": "knt-ct",
-        "category": "近鉄グループ（主要子会社）",
+        "category": "近鉄グループ",
         "name": "KNT-CTホールディングス（近畿日本ツーリスト等）",
         "region": "関東・関西",
         "official_domains": ["kntcthd.co.jp", "knt.co.jp", "club-t.com"],
@@ -432,7 +419,7 @@ COMPANIES = [
     },
     {
         "id": "nara-kotsu",
-        "category": "近鉄グループ（主要子会社）",
+        "category": "近鉄グループ",
         "name": "奈良交通",
         "region": "関西",
         "official_domains": ["narakotsu.co.jp"],
@@ -445,7 +432,7 @@ COMPANIES = [
     },
     {
         "id": "kintetsu-bus",
-        "category": "近鉄グループ（主要子会社）",
+        "category": "近鉄グループ",
         "name": "近鉄バス",
         "region": "関西",
         "official_domains": ["kintetsu-bus.co.jp"],
@@ -458,7 +445,7 @@ COMPANIES = [
     },
     {
         "id": "sanco-hd",
-        "category": "近鉄グループ（主要子会社）",
+        "category": "近鉄グループ",
         "name": "三重交通グループホールディングス（三重交通含む）",
         "region": "東海",
         "official_domains": ["holdings.sanco.co.jp", "sanco.co.jp"],
@@ -908,44 +895,69 @@ for comp in COMPANIES:
         if comp["category"] != "JR":
             continue
     elif selected_category == "私鉄":
-        if comp["category"] != "私鉄" or comp.get("is_kintetsu_sub", False):
+        if comp["category"] != "私鉄":
             continue
     elif selected_category == "近鉄グループ（近鉄GHD＋近畿日本鉄道）":
         if not comp.get("is_kintetsu_main", False):
             continue
     elif selected_category == "近鉄グループ（子会社含む）":
-        if not (comp.get("is_kintetsu_main", False) or comp.get("is_kintetsu_sub", False)):
+        if comp["category"] != "近鉄グループ":
             continue
     active_companies.append(comp)
 
 # ==========================================
-# 7. ★タイトルのすぐ下：各社ダイレクトジャンプボタン
+# 7. ★タイトルのすぐ下：3グループ分割クイックジャンプボタン
 # ==========================================
 st.markdown(
     """
     <style>
-    .jump-nav-container {
+    .jump-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-top: 12px;
+        margin-bottom: 28px;
+    }
+    @media (max-width: 960px) {
+        .jump-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .group-col {
+        background-color: rgba(128, 128, 128, 0.05);
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        border-radius: 10px;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+    }
+    .group-header {
+        font-weight: 700;
+        font-size: 0.9em;
+        padding-bottom: 6px;
+        margin-bottom: 10px;
+        border-bottom: 2px solid;
+    }
+    .jr-header { border-bottom-color: #0284c7; color: #0284c7; }
+    .private-header { border-bottom-color: #10b981; color: #10b981; }
+    .kintetsu-header { border-bottom-color: #f59e0b; color: #f59e0b; }
+    .btn-container {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 10px;
-        margin-bottom: 25px;
-        padding: 14px;
-        background-color: rgba(128, 128, 128, 0.08);
-        border-radius: 10px;
-        border: 1px solid rgba(128, 128, 128, 0.2);
+        gap: 6px;
     }
     .jump-btn {
         display: inline-block;
-        padding: 5px 12px;
+        padding: 4px 10px;
         background-color: var(--secondary-background-color, #ffffff);
         color: var(--text-color, #1f2937);
         text-decoration: none;
-        border-radius: 16px;
-        border: 1px solid rgba(128, 128, 128, 0.3);
-        font-size: 0.84em;
+        border-radius: 14px;
+        border: 1px solid rgba(128, 128, 128, 0.25);
+        font-size: 0.78em;
         font-weight: 500;
-        transition: all 0.2s ease;
+        line-height: 1.4;
+        transition: all 0.15s ease;
     }
     .jump-btn:hover {
         background-color: #0284c7;
@@ -953,18 +965,53 @@ st.markdown(
         border-color: #0284c7;
         text-decoration: none;
     }
+    .empty-note {
+        font-size: 0.8em;
+        color: gray;
+        font-style: italic;
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# ボタンリストをHTMLとして生成
-buttons_html = ["<div class='jump-nav-container'><span style='width:100%; font-size:0.85em; font-weight:bold; margin-bottom:4px; color:gray;'>📍 各社へクイックジャンプ:</span>"]
-for comp in active_companies:
-    buttons_html.append(f"<a href='#{comp['id']}' class='jump-btn'>{comp['name']}</a>")
-buttons_html.append("</div>")
+# 3グループに各社を分類
+jr_list = [c for c in active_companies if c["category"] == "JR"]
+private_list = [c for c in active_companies if c["category"] == "私鉄"]
+kintetsu_list = [c for c in active_companies if c["category"] == "近鉄グループ"]
 
-st.markdown("".join(buttons_html), unsafe_allow_html=True)
+def make_btn_html(comp_list):
+    if not comp_list:
+        return "<span class='empty-note'>（選択対象外）</span>"
+    return "".join([f"<a href='#{c['id']}' class='jump-btn'>{c['name']}</a>" for c in comp_list])
+
+jump_html = f"""
+<div class="jump-grid">
+  <!-- 左：JRグループ -->
+  <div class="group-col">
+    <div class="group-header jr-header">🚆 JR各社</div>
+    <div class="btn-container">
+      {make_btn_html(jr_list)}
+    </div>
+  </div>
+  <!-- 中央：私鉄グループ -->
+  <div class="group-col">
+    <div class="group-header private-header">🚇 私鉄各社</div>
+    <div class="btn-container">
+      {make_btn_html(private_list)}
+    </div>
+  </div>
+  <!-- 右：近鉄グループ -->
+  <div class="group-col">
+    <div class="group-header kintetsu-header">🏢 近鉄グループ</div>
+    <div class="btn-container">
+      {make_btn_html(kintetsu_list)}
+    </div>
+  </div>
+</div>
+"""
+
+st.markdown(jump_html, unsafe_allow_html=True)
 
 # ==========================================
 # 8. 結果の描画（「公式発表」優先ソート＆アンカー配置）
@@ -1005,7 +1052,7 @@ for comp in active_companies:
     else:
         display_items = official_items + general_items
 
-    # セクションヘッダー
+    # セクションヘッダー（JR / 私鉄 / 近鉄グループ）
     if comp["category"] != current_category:
         if current_category is not None:
             st.write("<br><br>", unsafe_allow_html=True)
@@ -1013,7 +1060,7 @@ for comp in active_companies:
         st.markdown(f"## 【 {current_category}各社 】（東から西順）")
         st.divider()
 
-    # ★ジャンプ先アンカー付き会社ヘッダー
+    # ジャンプ先アンカー付き会社ヘッダー
     main_url = comp["urls"][0]
     st.markdown(
         f"<div id='{comp['id']}'></div>"
