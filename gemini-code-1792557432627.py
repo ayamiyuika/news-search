@@ -27,7 +27,7 @@ st.caption(
 # 1. 鉄道会社・持株会社・近鉄グループ各社のマスターデータ
 # ==========================================
 COMPANIES = [
-    # --- JR各社（東から西順） ---
+    # --- JR（東から西順） ---
     {
         "id": "jr-hokkaido",
         "name": "JR北海道",
@@ -112,7 +112,7 @@ COMPANIES = [
         "is_private": False,
         "is_kintetsu": False,
     },
-    # --- 私鉄各社（東から西順：近畿日本鉄道を含む） ---
+    # --- 私鉄（東から西順：近畿日本鉄道を含む） ---
     {
         "id": "tobu",
         "name": "東武鉄道",
@@ -359,7 +359,7 @@ COMPANIES = [
         "is_private": True,
         "is_kintetsu": False,
     },
-    # --- 近鉄GHD本体および主要子会社・施設群 ---
+    # --- 近鉄グループ（本体＋主要子会社・施設） ---
     {
         "id": "kintetsu-ghd",
         "name": "近鉄GHD",
@@ -934,7 +934,6 @@ with st.sidebar:
     st.markdown("---")
     st.write("**2. 会社・種別の絞り込み**")
 
-    # ★ご指定通りの4分類（「近鉄グループ（近鉄GHD＋近畿日本鉄道）」削除、「近鉄グループ」に変更）
     selected_category = st.radio(
         "会社分類",
         [
@@ -975,122 +974,140 @@ st.caption(f"🕒 最終巡回時刻: {last_updated.strftime('%Y-%m-%d %H:%M:%S'
 
 # 表示対象の会社リストの決定
 if selected_category == "JR":
-    render_groups = [("JR各社", [c for c in COMPANIES if c["is_jr"]])]
+    render_groups = [("JR", [c for c in COMPANIES if c["is_jr"]])]
 elif selected_category == "私鉄":
-    # 私鉄（近畿日本鉄道を含む）
-    render_groups = [("私鉄各社", [c for c in COMPANIES if c["is_private"]])]
+    render_groups = [("私鉄", [c for c in COMPANIES if c["is_private"]])]
 elif selected_category == "近鉄グループ":
-    # 近鉄グループ（近鉄GHD、近畿日本鉄道、近鉄・都ホテルズ含む全社）
-    render_groups = [("近鉄グループ各社", [c for c in COMPANIES if c["is_kintetsu"]])]
+    render_groups = [("近鉄グループ", [c for c in COMPANIES if c["is_kintetsu"]])]
 else:
     # すべて
     render_groups = [
-        ("JR各社", [c for c in COMPANIES if c["is_jr"]]),
-        ("私鉄各社", [c for c in COMPANIES if c["is_private"]]),
-        ("近鉄グループ各社", [c for c in COMPANIES if c["is_kintetsu"] and not c["is_private"]]),
+        ("JR", [c for c in COMPANIES if c["is_jr"]]),
+        ("私鉄", [c for c in COMPANIES if c["is_private"]]),
+        ("近鉄グループ", [c for c in COMPANIES if c["is_kintetsu"] and not c["is_private"]]),
     ]
 
 # ==========================================
-# 7. タイトルのすぐ下：3グループ分割クイックジャンプボタン
+# 7. ★タイトルのすぐ下：横長スリムなクイックジャンプ（JR / 私鉄 / 近鉄グループ）
 # ==========================================
 st.markdown(
     """
     <style>
-    .jump-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 14px;
-        margin-top: 12px;
-        margin-bottom: 28px;
-    }
-    @media (max-width: 960px) {
-        .jump-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-    .group-col {
-        background-color: rgba(128, 128, 128, 0.05);
-        border: 1px solid rgba(128, 128, 128, 0.2);
-        border-radius: 10px;
-        padding: 12px 14px;
+    .slim-jump-container {
         display: flex;
         flex-direction: column;
+        gap: 6px;
+        margin-top: 8px;
+        margin-bottom: 22px;
+        padding: 10px 14px;
+        background-color: rgba(128, 128, 128, 0.05);
+        border: 1px solid rgba(128, 128, 128, 0.18);
+        border-radius: 8px;
     }
-    .group-header {
+    .slim-jump-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 2px 0;
+    }
+    .slim-label {
+        flex-shrink: 0;
+        width: 100px;
         font-weight: 700;
-        font-size: 0.9em;
-        padding-bottom: 6px;
-        margin-bottom: 10px;
-        border-bottom: 2px solid;
+        font-size: 0.82em;
     }
-    .jr-header { border-bottom-color: #0284c7; color: #0284c7; }
-    .private-header { border-bottom-color: #10b981; color: #10b981; }
-    .kintetsu-header { border-bottom-color: #f59e0b; color: #f59e0b; }
-    .btn-container {
+    .label-jr { color: #0284c7; }
+    .label-private { color: #10b981; }
+    .label-kintetsu { color: #f59e0b; }
+    .slim-btn-wrapper {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
+        gap: 5px;
+        flex-grow: 1;
     }
-    .jump-btn {
+    .slim-btn {
         display: inline-block;
-        padding: 4px 10px;
+        padding: 2px 9px;
         background-color: var(--secondary-background-color, #ffffff);
         color: var(--text-color, #1f2937);
         text-decoration: none;
-        border-radius: 14px;
+        border-radius: 12px;
         border: 1px solid rgba(128, 128, 128, 0.25);
-        font-size: 0.78em;
+        font-size: 0.76em;
         font-weight: 500;
-        line-height: 1.4;
+        line-height: 1.5;
         transition: all 0.15s ease;
     }
-    .jump-btn:hover {
+    .slim-btn:hover {
         background-color: #0284c7;
         color: #ffffff !important;
         border-color: #0284c7;
         text-decoration: none;
     }
-    .empty-note {
-        font-size: 0.8em;
-        color: gray;
-        font-style: italic;
+    /* 記事内：掲載ページボタンのデザイン */
+    .link-action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 6px;
+        padding: 4px 12px;
+        background-color: rgba(2, 132, 199, 0.08);
+        color: #0284c7 !important;
+        border: 1px solid rgba(2, 132, 199, 0.35);
+        border-radius: 6px;
+        font-size: 0.82em;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.15s ease;
+    }
+    .link-action-btn:hover {
+        background-color: #0284c7;
+        color: #ffffff !important;
+        border-color: #0284c7;
+        text-decoration: none;
+    }
+    @media (max-width: 768px) {
+        .slim-jump-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+        }
+        .slim-label {
+            width: auto;
+        }
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# ボタンリストの生成（選択カテゴリに連動）
 jr_buttons = [c for c in COMPANIES if c["is_jr"]] if selected_category in ["すべて", "JR"] else []
 private_buttons = [c for c in COMPANIES if c["is_private"]] if selected_category in ["すべて", "私鉄"] else []
 kintetsu_buttons = [c for c in COMPANIES if c["is_kintetsu"]] if selected_category in ["すべて", "近鉄グループ"] else []
 
-def make_btn_html(comp_list):
+def make_slim_btn_html(comp_list):
     if not comp_list:
-        return "<span class='empty-note'>（選択対象外）</span>"
-    return "".join([f"<a href='#{c['id']}' class='jump-btn'>{c['name']}</a>" for c in comp_list])
+        return "<span style='font-size:0.75em; color:gray;'>（選択対象外）</span>"
+    return "".join([f"<a href='#{c['id']}' class='slim-btn'>{c['name']}</a>" for c in comp_list])
 
 jump_html = f"""
-<div class="jump-grid">
-  <!-- 左：JR各社 -->
-  <div class="group-col">
-    <div class="group-header jr-header">🚆 JR各社</div>
-    <div class="btn-container">
-      {make_btn_html(jr_buttons)}
+<div class="slim-jump-container">
+  <div class="slim-jump-row">
+    <div class="slim-label label-jr">🚆 JR</div>
+    <div class="slim-btn-wrapper">
+      {make_slim_btn_html(jr_buttons)}
     </div>
   </div>
-  <!-- 中央：私鉄各社（近畿日本鉄道含む） -->
-  <div class="group-col">
-    <div class="group-header private-header">🚇 私鉄各社</div>
-    <div class="btn-container">
-      {make_btn_html(private_buttons)}
+  <div class="slim-jump-row">
+    <div class="slim-label label-private">🚇 私鉄</div>
+    <div class="slim-btn-wrapper">
+      {make_slim_btn_html(private_buttons)}
     </div>
   </div>
-  <!-- 右：近鉄グループ（近鉄GHD、近畿日本鉄道、近鉄・都ホテルズ含む） -->
-  <div class="group-col">
-    <div class="group-header kintetsu-header">🏢 近鉄グループ</div>
-    <div class="btn-container">
-      {make_btn_html(kintetsu_buttons)}
+  <div class="slim-jump-row">
+    <div class="slim-label label-kintetsu">🏢 近鉄グループ</div>
+    <div class="slim-btn-wrapper">
+      {make_slim_btn_html(kintetsu_buttons)}
     </div>
   </div>
 </div>
@@ -1099,7 +1116,7 @@ jump_html = f"""
 st.markdown(jump_html, unsafe_allow_html=True)
 
 # ==========================================
-# 8. 結果の描画（「公式発表」優先ソート＆アンカー配置）
+# 8. 結果の描画（「掲載ページ」ボタン仕様）
 # ==========================================
 for group_title, comp_list in render_groups:
     st.write("<br>", unsafe_allow_html=True)
@@ -1109,13 +1126,11 @@ for group_title, comp_list in render_groups:
     for comp in comp_list:
         raw_items = all_cached_data.get(comp["name"], [])
 
-        # 指定期間で絞り込み
         period_items = [
             item for item in raw_items
             if start_date <= item["date"] <= end_date
         ]
 
-        # キーワード検索
         if search_keyword:
             kw = search_keyword.lower()
             period_items = [
@@ -1126,7 +1141,6 @@ for group_title, comp_list in render_groups:
                 or kw in comp["name"].lower()
             ]
 
-        # 公式発表が上、ニュースが下の順序でソート
         official_items = [i for i in period_items if i["type"] == "公式発表"]
         general_items = [i for i in period_items if i["type"] == "ニュース（一般サイト）"]
 
@@ -1140,7 +1154,6 @@ for group_title, comp_list in render_groups:
         else:
             display_items = official_items + general_items
 
-        # ジャンプ先アンカー付き会社ヘッダー
         main_url = comp["urls"][0]
         st.markdown(
             f"<div id='{comp['id']}'></div>"
@@ -1159,6 +1172,7 @@ for group_title, comp_list in render_groups:
                 is_official = item["type"] == "公式発表"
                 type_badge = "📢 **公式発表**" if is_official else "📰 **ニュース（一般サイト）**"
                 file_badge = "🟥 **[PDF資料]**" if item["is_pdf"] else "🌐 **[Web発表]**"
+                btn_caption = "掲載資料（PDF）を開く ↗" if item["is_pdf"] else "掲載ページを開く ↗"
 
                 with st.container(border=True):
                     col_left, col_right = st.columns([1, 4])
@@ -1168,13 +1182,16 @@ for group_title, comp_list in render_groups:
                         st.markdown(file_badge)
                         st.caption(f"情報元: {item['source']}")
                     with col_right:
+                        # タイトル（クリックで開くことも可能）
                         st.markdown(
                             f"##### <a href='{item['url']}' target='_blank' rel='noopener noreferrer'>{item['title']}</a>",
                             unsafe_allow_html=True,
                         )
                         st.write(f"**主な内容:** {item['summary']}")
+
+                        # ★URL文字列を表示させず、スマートな「掲載ページ」ボタンに変更
                         st.markdown(
-                            f"🔗 **掲載ページ:** <a href='{item['url']}' target='_blank' rel='noopener noreferrer'>{item['url']}</a>",
+                            f"<a href='{item['url']}' target='_blank' rel='noopener noreferrer' class='link-action-btn'>🔗 {btn_caption}</a>",
                             unsafe_allow_html=True,
                         )
             st.write("")
