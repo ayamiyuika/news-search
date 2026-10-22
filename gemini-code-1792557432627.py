@@ -30,7 +30,6 @@ COMPANIES = [
     # --- JR各社（東から西順） ---
     {
         "id": "jr-hokkaido",
-        "category": "JR",
         "name": "JR北海道",
         "region": "北海道",
         "official_domains": ["jrhokkaido.co.jp"],
@@ -39,10 +38,12 @@ COMPANIES = [
             "https://www.jrhokkaido.co.jp/",
         ],
         "query": "JR北海道",
+        "is_jr": True,
+        "is_private": False,
+        "is_kintetsu": False,
     },
     {
         "id": "jr-east",
-        "category": "JR",
         "name": "JR東日本",
         "region": "東日本",
         "official_domains": ["jreast.co.jp"],
@@ -51,10 +52,12 @@ COMPANIES = [
             "https://www.jreast.co.jp/company/",
         ],
         "query": "JR東日本",
+        "is_jr": True,
+        "is_private": False,
+        "is_kintetsu": False,
     },
     {
         "id": "jr-central",
-        "category": "JR",
         "name": "JR東海",
         "region": "東海",
         "official_domains": ["jr-central.co.jp"],
@@ -63,10 +66,12 @@ COMPANIES = [
             "https://jr-central.co.jp/",
         ],
         "query": "JR東海 OR 東海旅客鉄道",
+        "is_jr": True,
+        "is_private": False,
+        "is_kintetsu": False,
     },
     {
         "id": "jr-west",
-        "category": "JR",
         "name": "JR西日本",
         "region": "西日本",
         "official_domains": ["westjr.co.jp"],
@@ -75,10 +80,12 @@ COMPANIES = [
             "https://www.westjr.co.jp/press/",
         ],
         "query": "JR西日本",
+        "is_jr": True,
+        "is_private": False,
+        "is_kintetsu": False,
     },
     {
         "id": "jr-shikoku",
-        "category": "JR",
         "name": "JR四国",
         "region": "四国",
         "official_domains": ["jr-shikoku.co.jp"],
@@ -87,10 +94,12 @@ COMPANIES = [
             "https://www.jr-shikoku.co.jp/",
         ],
         "query": "JR四国",
+        "is_jr": True,
+        "is_private": False,
+        "is_kintetsu": False,
     },
     {
         "id": "jr-kyushu",
-        "category": "JR",
         "name": "JR九州",
         "region": "九州",
         "official_domains": ["jrkyushu.co.jp"],
@@ -99,20 +108,24 @@ COMPANIES = [
             "https://www.jrkyushu.co.jp/",
         ],
         "query": "JR九州",
+        "is_jr": True,
+        "is_private": False,
+        "is_kintetsu": False,
     },
-    # --- 私鉄各社（東から西順） ---
+    # --- 私鉄各社（東から西順：近畿日本鉄道を含む） ---
     {
         "id": "tobu",
-        "category": "私鉄",
         "name": "東武鉄道",
         "region": "関東",
         "official_domains": ["tobu.co.jp"],
         "urls": ["https://www.tobu.co.jp/newsrelease/"],
         "query": "東武鉄道",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "seibu",
-        "category": "私鉄",
         "name": "西武鉄道（西武HD含む）",
         "region": "関東",
         "official_domains": ["seiburailway.jp", "seibuholdings.co.jp"],
@@ -121,10 +134,12 @@ COMPANIES = [
             "https://www.seibuholdings.co.jp/news/",
         ],
         "query": "西武鉄道 OR 西武ホールディングス",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "keisei",
-        "category": "私鉄",
         "name": "京成電鉄",
         "region": "関東",
         "official_domains": ["keisei.co.jp"],
@@ -133,10 +148,12 @@ COMPANIES = [
             "https://www.keisei.co.jp/",
         ],
         "query": "京成電鉄",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "tokyo-metro",
-        "category": "私鉄",
         "name": "東京メトロ",
         "region": "関東",
         "official_domains": ["tokyometro.jp"],
@@ -145,10 +162,12 @@ COMPANIES = [
             "https://www.tokyometro.jp/news/rss/news.xml",
         ],
         "query": "東京メトロ OR 東京地下鉄",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "keio",
-        "category": "私鉄",
         "name": "京王電鉄",
         "region": "関東",
         "official_domains": ["keio.co.jp"],
@@ -157,10 +176,12 @@ COMPANIES = [
             "https://www.keio.co.jp/news/update/index.html",
         ],
         "query": "京王電鉄",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "odakyu",
-        "category": "私鉄",
         "name": "小田急電鉄",
         "region": "関東",
         "official_domains": ["odakyu.jp"],
@@ -169,10 +190,12 @@ COMPANIES = [
             "https://www.odakyu.jp/",
         ],
         "query": "小田急電鉄",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "tokyu",
-        "category": "私鉄",
         "name": "東急電鉄（東急HD含む）",
         "region": "関東",
         "official_domains": ["tokyu.co.jp"],
@@ -181,10 +204,12 @@ COMPANIES = [
             "https://www.tokyu.co.jp/information/",
         ],
         "query": "東急電鉄 OR 東急",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "keikyu",
-        "category": "私鉄",
         "name": "京浜急行電鉄",
         "region": "関東",
         "official_domains": ["keikyu.co.jp"],
@@ -193,10 +218,12 @@ COMPANIES = [
             "https://www.keikyu.co.jp/",
         ],
         "query": "京浜急行電鉄 OR 京急",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "sotetsu",
-        "category": "私鉄",
         "name": "相模鉄道（相鉄HD含む）",
         "region": "関東",
         "official_domains": ["sotetsu.co.jp"],
@@ -205,10 +232,12 @@ COMPANIES = [
             "https://www.sotetsu.co.jp/news/",
         ],
         "query": "相模鉄道 OR 相鉄ホールディングス",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "meitetsu",
-        "category": "私鉄",
         "name": "名古屋鉄道",
         "region": "東海",
         "official_domains": ["meitetsu.co.jp"],
@@ -217,10 +246,26 @@ COMPANIES = [
             "https://www.meitetsu.co.jp/",
         ],
         "query": "名古屋鉄道 OR 名鉄",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
+    },
+    {
+        "id": "kintetsu-railway",
+        "name": "近畿日本鉄道",
+        "region": "関西",
+        "official_domains": ["kintetsu.co.jp"],
+        "urls": [
+            "https://www.kintetsu.co.jp/all_news/whatsnew.html",
+            "https://www.kintetsu.co.jp/",
+        ],
+        "query": "近畿日本鉄道 OR 近鉄電車",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": True,
     },
     {
         "id": "nankai",
-        "category": "私鉄",
         "name": "南海電気鉄道",
         "region": "関西",
         "official_domains": ["nankai.co.jp"],
@@ -229,10 +274,12 @@ COMPANIES = [
             "https://www.nankai.co.jp/",
         ],
         "query": "南海電気鉄道 OR 南海電鉄",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "keihan",
-        "category": "私鉄",
         "name": "京阪電気鉄道（京阪HD含む）",
         "region": "関西",
         "official_domains": ["keihan.co.jp", "keihan-holdings.co.jp"],
@@ -241,10 +288,12 @@ COMPANIES = [
             "https://www.keihan-holdings.co.jp/news/",
         ],
         "query": "京阪電気鉄道 OR 京阪ホールディングス",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "osaka-metro",
-        "category": "私鉄",
         "name": "大阪メトロ (Osaka Metro)",
         "region": "関西",
         "official_domains": ["osakametro.co.jp"],
@@ -253,10 +302,12 @@ COMPANIES = [
             "https://subway.osakametro.co.jp/news/",
         ],
         "query": "大阪メトロ OR \"Osaka Metro\"",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "hanshin",
-        "category": "私鉄",
         "name": "阪神電気鉄道",
         "region": "関西",
         "official_domains": ["hanshin.co.jp"],
@@ -265,10 +316,12 @@ COMPANIES = [
             "https://www.hanshin.co.jp/",
         ],
         "query": "阪神電気鉄道 OR 阪神電車",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "hankyu",
-        "category": "私鉄",
         "name": "阪急電鉄",
         "region": "関西",
         "official_domains": ["hankyu.co.jp"],
@@ -277,19 +330,23 @@ COMPANIES = [
             "https://www.hankyu.co.jp/",
         ],
         "query": "阪急電鉄 OR 阪急電車",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "hankyu-hanshin-hd",
-        "category": "私鉄",
         "name": "阪急阪神ホールディングス",
         "region": "関西",
         "official_domains": ["hankyu-hanshin.co.jp"],
         "urls": ["https://www.hankyu-hanshin.co.jp/release/"],
         "query": "阪急阪神ホールディングス OR \"阪急阪神HD\"",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
     {
         "id": "nishitetsu",
-        "category": "私鉄",
         "name": "西日本鉄道",
         "region": "九州",
         "official_domains": ["nishitetsu.co.jp"],
@@ -298,25 +355,27 @@ COMPANIES = [
             "https://www.nishitetsu.co.jp/release/",
         ],
         "query": "西日本鉄道 OR 西鉄",
+        "is_jr": False,
+        "is_private": True,
+        "is_kintetsu": False,
     },
-    # --- 近鉄グループ（本体＋主要子会社・施設） ---
+    # --- 近鉄GHD本体および主要子会社・施設群 ---
     {
-        "id": "kintetsu-main",
-        "category": "近鉄グループ",
-        "name": "近鉄グループ（近鉄GHD＋近畿日本鉄道）",
+        "id": "kintetsu-ghd",
+        "name": "近鉄GHD",
         "region": "関西",
-        "official_domains": ["kintetsu.co.jp", "kintetsu-g-hd.co.jp"],
+        "official_domains": ["kintetsu-g-hd.co.jp"],
         "urls": [
-            "https://www.kintetsu.co.jp/all_news/whatsnew.html",
             "https://www.kintetsu-g-hd.co.jp/news/",
-            "https://www.kintetsu.co.jp/",
+            "https://www.kintetsu-g-hd.co.jp/",
         ],
-        "query": "近畿日本鉄道 OR 近鉄グループホールディングス OR 近鉄",
-        "is_kintetsu_main": True,
+        "query": "近鉄グループホールディングス OR 近鉄GHD",
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
     },
     {
         "id": "kintetsu-fudosan",
-        "category": "近鉄グループ",
         "name": "近鉄不動産",
         "region": "関西",
         "official_domains": ["kintetsu-re.co.jp"],
@@ -325,11 +384,12 @@ COMPANIES = [
             "https://www.kintetsu-re.co.jp/",
         ],
         "query": "近鉄不動産",
-        "is_kintetsu_sub": True,
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
     },
     {
         "id": "abeno-art-museum",
-        "category": "近鉄グループ",
         "name": "あべのハルカス美術館",
         "region": "関西",
         "official_domains": ["aham.jp"],
@@ -337,11 +397,12 @@ COMPANIES = [
             "https://www.aham.jp/",
         ],
         "query": "あべのハルカス美術館",
-        "is_kintetsu_sub": True,
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
     },
     {
         "id": "kintetsu-dept",
-        "category": "近鉄グループ",
         "name": "近鉄百貨店",
         "region": "関西",
         "official_domains": ["d-kintetsu.co.jp"],
@@ -350,11 +411,12 @@ COMPANIES = [
             "https://www.d-kintetsu.co.jp/",
         ],
         "query": "近鉄百貨店",
-        "is_kintetsu_sub": True,
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
     },
     {
         "id": "kinsho-store",
-        "category": "近鉄グループ",
         "name": "近商ストア",
         "region": "関西",
         "official_domains": ["kinsho-store.co.jp"],
@@ -363,11 +425,12 @@ COMPANIES = [
             "https://www.kinsho-store.co.jp/",
         ],
         "query": "近商ストア",
-        "is_kintetsu_sub": True,
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
     },
     {
         "id": "kaiyukan",
-        "category": "近鉄グループ",
         "name": "海遊館",
         "region": "関西",
         "official_domains": ["kaiyukan.com"],
@@ -376,11 +439,12 @@ COMPANIES = [
             "https://www.kaiyukan.com/",
         ],
         "query": "海遊館",
-        "is_kintetsu_sub": True,
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
     },
     {
         "id": "kin-ei",
-        "category": "近鉄グループ",
         "name": "きんえい（アポロ・ルシアス）",
         "region": "関西",
         "official_domains": ["kin-ei.co.jp"],
@@ -389,11 +453,26 @@ COMPANIES = [
             "https://www.kin-ei.co.jp/",
         ],
         "query": "株式会社きんえい OR きんえい アポロ",
-        "is_kintetsu_sub": True,
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
+    },
+    {
+        "id": "miyako-hotels",
+        "name": "近鉄・都ホテルズ",
+        "region": "関西・全国",
+        "official_domains": ["miyakohotels.ne.jp"],
+        "urls": [
+            "https://www.miyakohotels.ne.jp/information/",
+            "https://www.miyakohotels.ne.jp/",
+        ],
+        "query": "近鉄・都ホテルズ OR 都ホテルズ＆リゾーツ OR 都ホテル",
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
     },
     {
         "id": "kwe",
-        "category": "近鉄グループ",
         "name": "近鉄エクスプレス",
         "region": "関東・関西",
         "official_domains": ["kwe.co.jp", "kwe.com"],
@@ -402,11 +481,12 @@ COMPANIES = [
             "https://www.kwe.co.jp/",
         ],
         "query": "近鉄エクスプレス",
-        "is_kintetsu_sub": True,
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
     },
     {
         "id": "knt-ct",
-        "category": "近鉄グループ",
         "name": "KNT-CTホールディングス（近畿日本ツーリスト等）",
         "region": "関東・関西",
         "official_domains": ["kntcthd.co.jp", "knt.co.jp", "club-t.com"],
@@ -415,11 +495,12 @@ COMPANIES = [
             "https://www.kntcthd.co.jp/",
         ],
         "query": "KNT-CTホールディングス OR 近畿日本ツーリスト OR クラブツーリズム",
-        "is_kintetsu_sub": True,
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
     },
     {
         "id": "nara-kotsu",
-        "category": "近鉄グループ",
         "name": "奈良交通",
         "region": "関西",
         "official_domains": ["narakotsu.co.jp"],
@@ -428,11 +509,12 @@ COMPANIES = [
             "https://www.narakotsu.co.jp/",
         ],
         "query": "奈良交通",
-        "is_kintetsu_sub": True,
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
     },
     {
         "id": "kintetsu-bus",
-        "category": "近鉄グループ",
         "name": "近鉄バス",
         "region": "関西",
         "official_domains": ["kintetsu-bus.co.jp"],
@@ -441,11 +523,12 @@ COMPANIES = [
             "https://www.kintetsu-bus.co.jp/",
         ],
         "query": "近鉄バス",
-        "is_kintetsu_sub": True,
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
     },
     {
         "id": "sanco-hd",
-        "category": "近鉄グループ",
         "name": "三重交通グループホールディングス（三重交通含む）",
         "region": "東海",
         "official_domains": ["holdings.sanco.co.jp", "sanco.co.jp"],
@@ -454,7 +537,9 @@ COMPANIES = [
             "https://www.sanco.co.jp/",
         ],
         "query": "三重交通グループホールディングス OR 三重交通",
-        "is_kintetsu_sub": True,
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
     },
 ]
 
@@ -849,14 +934,14 @@ with st.sidebar:
     st.markdown("---")
     st.write("**2. 会社・種別の絞り込み**")
 
+    # ★ご指定通りの4分類（「近鉄グループ（近鉄GHD＋近畿日本鉄道）」削除、「近鉄グループ」に変更）
     selected_category = st.radio(
         "会社分類",
         [
             "すべて",
             "JR",
             "私鉄",
-            "近鉄グループ（近鉄GHD＋近畿日本鉄道）",
-            "近鉄グループ（子会社含む）",
+            "近鉄グループ",
         ],
     )
 
@@ -888,25 +973,25 @@ with st.spinner("データ確認中...（キャッシュから超高速読込）
 
 st.caption(f"🕒 最終巡回時刻: {last_updated.strftime('%Y-%m-%d %H:%M:%S')} （1時間ごとに自動再巡回）")
 
-# フィルタリング対象の会社リストを特定
-active_companies = []
-for comp in COMPANIES:
-    if selected_category == "JR":
-        if comp["category"] != "JR":
-            continue
-    elif selected_category == "私鉄":
-        if comp["category"] != "私鉄":
-            continue
-    elif selected_category == "近鉄グループ（近鉄GHD＋近畿日本鉄道）":
-        if not comp.get("is_kintetsu_main", False):
-            continue
-    elif selected_category == "近鉄グループ（子会社含む）":
-        if comp["category"] != "近鉄グループ":
-            continue
-    active_companies.append(comp)
+# 表示対象の会社リストの決定
+if selected_category == "JR":
+    render_groups = [("JR各社", [c for c in COMPANIES if c["is_jr"]])]
+elif selected_category == "私鉄":
+    # 私鉄（近畿日本鉄道を含む）
+    render_groups = [("私鉄各社", [c for c in COMPANIES if c["is_private"]])]
+elif selected_category == "近鉄グループ":
+    # 近鉄グループ（近鉄GHD、近畿日本鉄道、近鉄・都ホテルズ含む全社）
+    render_groups = [("近鉄グループ各社", [c for c in COMPANIES if c["is_kintetsu"]])]
+else:
+    # すべて
+    render_groups = [
+        ("JR各社", [c for c in COMPANIES if c["is_jr"]]),
+        ("私鉄各社", [c for c in COMPANIES if c["is_private"]]),
+        ("近鉄グループ各社", [c for c in COMPANIES if c["is_kintetsu"] and not c["is_private"]]),
+    ]
 
 # ==========================================
-# 7. ★タイトルのすぐ下：3グループ分割クイックジャンプボタン
+# 7. タイトルのすぐ下：3グループ分割クイックジャンプボタン
 # ==========================================
 st.markdown(
     """
@@ -975,10 +1060,10 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 3グループに各社を分類
-jr_list = [c for c in active_companies if c["category"] == "JR"]
-private_list = [c for c in active_companies if c["category"] == "私鉄"]
-kintetsu_list = [c for c in active_companies if c["category"] == "近鉄グループ"]
+# ボタンリストの生成（選択カテゴリに連動）
+jr_buttons = [c for c in COMPANIES if c["is_jr"]] if selected_category in ["すべて", "JR"] else []
+private_buttons = [c for c in COMPANIES if c["is_private"]] if selected_category in ["すべて", "私鉄"] else []
+kintetsu_buttons = [c for c in COMPANIES if c["is_kintetsu"]] if selected_category in ["すべて", "近鉄グループ"] else []
 
 def make_btn_html(comp_list):
     if not comp_list:
@@ -987,25 +1072,25 @@ def make_btn_html(comp_list):
 
 jump_html = f"""
 <div class="jump-grid">
-  <!-- 左：JRグループ -->
+  <!-- 左：JR各社 -->
   <div class="group-col">
     <div class="group-header jr-header">🚆 JR各社</div>
     <div class="btn-container">
-      {make_btn_html(jr_list)}
+      {make_btn_html(jr_buttons)}
     </div>
   </div>
-  <!-- 中央：私鉄グループ -->
+  <!-- 中央：私鉄各社（近畿日本鉄道含む） -->
   <div class="group-col">
     <div class="group-header private-header">🚇 私鉄各社</div>
     <div class="btn-container">
-      {make_btn_html(private_list)}
+      {make_btn_html(private_buttons)}
     </div>
   </div>
-  <!-- 右：近鉄グループ -->
+  <!-- 右：近鉄グループ（近鉄GHD、近畿日本鉄道、近鉄・都ホテルズ含む） -->
   <div class="group-col">
     <div class="group-header kintetsu-header">🏢 近鉄グループ</div>
     <div class="btn-container">
-      {make_btn_html(kintetsu_list)}
+      {make_btn_html(kintetsu_buttons)}
     </div>
   </div>
 </div>
@@ -1016,88 +1101,83 @@ st.markdown(jump_html, unsafe_allow_html=True)
 # ==========================================
 # 8. 結果の描画（「公式発表」優先ソート＆アンカー配置）
 # ==========================================
-current_category = None
+for group_title, comp_list in render_groups:
+    st.write("<br>", unsafe_allow_html=True)
+    st.markdown(f"## 【 {group_title} 】（東から西順）")
+    st.divider()
 
-for comp in active_companies:
-    raw_items = all_cached_data.get(comp["name"], [])
+    for comp in comp_list:
+        raw_items = all_cached_data.get(comp["name"], [])
 
-    # 指定期間で絞り込み
-    period_items = [
-        item for item in raw_items
-        if start_date <= item["date"] <= end_date
-    ]
-
-    # キーワード検索
-    if search_keyword:
-        kw = search_keyword.lower()
+        # 指定期間で絞り込み
         period_items = [
-            item
-            for item in period_items
-            if kw in item["title"].lower()
-            or kw in item["summary"].lower()
-            or kw in comp["name"].lower()
+            item for item in raw_items
+            if start_date <= item["date"] <= end_date
         ]
 
-    # 公式発表が上、ニュースが下の順序でソート
-    official_items = [i for i in period_items if i["type"] == "公式発表"]
-    general_items = [i for i in period_items if i["type"] == "ニュース（一般サイト）"]
+        # キーワード検索
+        if search_keyword:
+            kw = search_keyword.lower()
+            period_items = [
+                item
+                for item in period_items
+                if kw in item["title"].lower()
+                or kw in item["summary"].lower()
+                or kw in comp["name"].lower()
+            ]
 
-    official_items.sort(key=lambda x: x["date"], reverse=True)
-    general_items.sort(key=lambda x: x["date"], reverse=True)
+        # 公式発表が上、ニュースが下の順序でソート
+        official_items = [i for i in period_items if i["type"] == "公式発表"]
+        general_items = [i for i in period_items if i["type"] == "ニュース（一般サイト）"]
 
-    if selected_type == "公式発表":
-        display_items = official_items
-    elif selected_type == "ニュース（一般サイト）":
-        display_items = general_items
-    else:
-        display_items = official_items + general_items
+        official_items.sort(key=lambda x: x["date"], reverse=True)
+        general_items.sort(key=lambda x: x["date"], reverse=True)
 
-    # セクションヘッダー（JR / 私鉄 / 近鉄グループ）
-    if comp["category"] != current_category:
-        if current_category is not None:
-            st.write("<br><br>", unsafe_allow_html=True)
-        current_category = comp["category"]
-        st.markdown(f"## 【 {current_category}各社 】（東から西順）")
-        st.divider()
+        if selected_type == "公式発表":
+            display_items = official_items
+        elif selected_type == "ニュース（一般サイト）":
+            display_items = general_items
+        else:
+            display_items = official_items + general_items
 
-    # ジャンプ先アンカー付き会社ヘッダー
-    main_url = comp["urls"][0]
-    st.markdown(
-        f"<div id='{comp['id']}'></div>"
-        f"### 🏢 {comp['name']} <span style='font-size:0.8em;"
-        f" color:gray;'>（{comp['region']}）</span> [公式HP"
-        f" ↗]({main_url})",
-        unsafe_allow_html=True,
-    )
+        # ジャンプ先アンカー付き会社ヘッダー
+        main_url = comp["urls"][0]
+        st.markdown(
+            f"<div id='{comp['id']}'></div>"
+            f"### 🏢 {comp['name']} <span style='font-size:0.8em;"
+            f" color:gray;'>（{comp['region']}）</span> [公式HP"
+            f" ↗]({main_url})",
+            unsafe_allow_html=True,
+        )
 
-    if not display_items:
-        type_label = f"（{selected_type}）" if selected_type != "すべて" else ""
-        st.info(f"📅 指定期間・条件内の発表{type_label}は **なし** です。")
-        st.write("")
-    else:
-        for item in display_items:
-            is_official = item["type"] == "公式発表"
-            type_badge = "📢 **公式発表**" if is_official else "📰 **ニュース（一般サイト）**"
-            file_badge = "🟥 **[PDF資料]**" if item["is_pdf"] else "🌐 **[Web発表]**"
+        if not display_items:
+            type_label = f"（{selected_type}）" if selected_type != "すべて" else ""
+            st.info(f"📅 指定期間・条件内の発表{type_label}は **なし** です。")
+            st.write("")
+        else:
+            for item in display_items:
+                is_official = item["type"] == "公式発表"
+                type_badge = "📢 **公式発表**" if is_official else "📰 **ニュース（一般サイト）**"
+                file_badge = "🟥 **[PDF資料]**" if item["is_pdf"] else "🌐 **[Web発表]**"
 
-            with st.container(border=True):
-                col_left, col_right = st.columns([1, 4])
-                with col_left:
-                    st.write(f"📅 **{item['date']}**")
-                    st.markdown(type_badge)
-                    st.markdown(file_badge)
-                    st.caption(f"情報元: {item['source']}")
-                with col_right:
-                    st.markdown(
-                        f"##### <a href='{item['url']}' target='_blank' rel='noopener noreferrer'>{item['title']}</a>",
-                        unsafe_allow_html=True,
-                    )
-                    st.write(f"**主な内容:** {item['summary']}")
-                    st.markdown(
-                        f"🔗 **掲載ページ:** <a href='{item['url']}' target='_blank' rel='noopener noreferrer'>{item['url']}</a>",
-                        unsafe_allow_html=True,
-                    )
-        st.write("")
+                with st.container(border=True):
+                    col_left, col_right = st.columns([1, 4])
+                    with col_left:
+                        st.write(f"📅 **{item['date']}**")
+                        st.markdown(type_badge)
+                        st.markdown(file_badge)
+                        st.caption(f"情報元: {item['source']}")
+                    with col_right:
+                        st.markdown(
+                            f"##### <a href='{item['url']}' target='_blank' rel='noopener noreferrer'>{item['title']}</a>",
+                            unsafe_allow_html=True,
+                        )
+                        st.write(f"**主な内容:** {item['summary']}")
+                        st.markdown(
+                            f"🔗 **掲載ページ:** <a href='{item['url']}' target='_blank' rel='noopener noreferrer'>{item['url']}</a>",
+                            unsafe_allow_html=True,
+                        )
+            st.write("")
 
 # フッター免責事項
 st.write("---")
