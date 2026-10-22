@@ -4,6 +4,7 @@ import gzip
 import html
 import re
 import ssl
+import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -19,7 +20,7 @@ st.set_page_config(
 
 st.title("🚆 全国大手鉄道会社 ニュース・広報発表 巡回チェッカー")
 st.caption(
-    "JR各社・大手私鉄・地下鉄および近鉄グループ各社の公式ホームページ・ニュースを自動巡回し、指定期間内の発表を一覧表示します。"
+    "JR各社・大手私鉄・地下鉄および近鉄グループ各社の公式ホームページ・最新ニュースを一覧表示します。"
 )
 
 # ==========================================
@@ -372,16 +373,14 @@ GENERIC_LINK_TEXTS = {
     "企業情報", "サイトマップ", "ニュースリリース", "お知らせ", "新着情報"
 }
 
-# ==========================================
-# 2. 自動エンコーディング解析エンジン（文字化け完全防止）
-# ==========================================
 zen_to_han = str.maketrans("０１２３４５６７８９", "0123456789")
 
 
+# ==========================================
+# 2. 自動エンコーディング解析エンジン（JR西日本等の文字化け防止）
+# ==========================================
 def decode_html_bytes(raw_bytes, url=""):
-    """JR西日本のCP932/Shift_JIS、UTF-8、EUC-JPを自動判別して完璧にデコード"""
     enc_candidates = []
-
     if "westjr.co.jp" in url:
         enc_candidates.extend(["cp932", "shift_jis"])
 
@@ -419,7 +418,6 @@ def decode_html_bytes(raw_bytes, url=""):
 
 
 def parse_date_text(raw_text, current_year):
-    """テキストから西暦・和暦・月日を解読"""
     text = re.sub(r"<[^>]+>", " ", raw_text)
     text = html.unescape(text).translate(zen_to_han)
 
@@ -476,12 +474,15 @@ def parse_date_text(raw_text, current_year):
 
 
 # ==========================================
-# 3. 公式サイト直接巡回
+# 3. スクレイピング（公式・一般ニュース）
 # ==========================================
-def fetch_official_releases(company_info, start_date, end_date):
+def fetch_official_releases(company_info, max_days_back=21):
+    """自社公式HPから直近発表を取得（キャッシュ内部用）"""
     results = []
     seen_urls = set()
-    current_year = datetime.date.today().year
+    today = datetime.date.today()
+    cutoff_date = today - datetime.timedelta(days=max_days_back)
+    current_year = today.year
 
     ctx = ssl._create_unverified_context()
     headers = {
@@ -528,7 +529,7 @@ def fetch_official_releases(company_info, start_date, end_date):
                         l = l_m.group(1).strip()
                         d_str = d_m.group(1) if d_m else ""
                         item_date = parse_date_text(d_str, current_year)
-                        if item_date and (start_date <= item_date <= end_date) and l not in seen_urls:
+                        if item_date and (cutoff_date <= item_date <= today) and l not in seen_urls:
                             seen_urls.add(l)
                             results.append({
                                 "date": item_date,
@@ -576,7 +577,7 @@ def fetch_official_releases(company_info, start_date, end_date):
                 if not found_date:
                     found_date = parse_date_text(surrounding, current_year)
 
-                if not found_date or not (start_date <= found_date <= end_date):
+                if not found_date or not (cutoff_date <= found_date <= today):
                     continue
 
                 raw_t = re.sub(r"<[^>]+>", " ", inside_html)
@@ -630,13 +631,12 @@ def fetch_official_releases(company_info, start_date, end_date):
     return results
 
 
-# ==========================================
-# 4. 一般ニュース巡回
-# ==========================================
-def fetch_general_news(query, start_date, end_date):
+def fetch_general_news(query, max_days_back=21):
     results = []
     encoded_q = urllib.parse.quote(query)
     rss_url = f"https://www.bing.com/news/search?q={encoded_q}&format=rss&mkt=ja-JP"
+    today = datetime.date.today()
+    cutoff_date = today - datetime.timedelta(days=max_days_back)
 
     ctx = ssl._create_unverified_context()
     headers = {
@@ -683,7 +683,7 @@ def fetch_general_news(query, start_date, end_date):
                 except Exception:
                     pass
 
-            if not item_date or not (start_date <= item_date <= end_date):
+            if not item_date or not (cutoff_date <= item_date <= today):
                 continue
 
             clean_title = raw_title.strip()
@@ -711,34 +711,42 @@ def fetch_general_news(query, start_date, end_date):
 
 
 # ==========================================
-# 5. 統合フェッチ（公式発表 ＋ 一般ニュース）
+# 4. ★安全な全体データキャッシュエンジン（1時間保持）
 # ==========================================
-def fetch_company_all(company_info, start_date, end_date):
-    official_list = fetch_official_releases(company_info, start_date, end_date)
-    general_list = []
-    if "query" in company_info:
-        general_list = fetch_general_news(company_info["query"], start_date, end_date)
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_cached_railway_data(_companies_list):
+    """
+    全社データを1時間に1度だけ裏側でまとめて収集し、メモリに安全記憶。
+    不特定多数のユーザーが来ても、相手先サーバーへの負担は1時間に1回のみ！
+    """
+    data_dict = {}
+    for comp in _companies_list:
+        official = fetch_official_releases(comp, max_days_back=21)
+        general = []
+        if "query" in comp:
+            general = fetch_general_news(comp["query"], max_days_back=21)
 
-    combined = list(official_list)
-    seen_urls = {item["url"] for item in official_list}
-    for g in general_list:
-        if g["url"] not in seen_urls:
-            seen_urls.add(g["url"])
-            combined.append(g)
+        combined = list(official)
+        seen_urls = {item["url"] for item in official}
+        for g in general:
+            if g["url"] not in seen_urls:
+                seen_urls.add(g["url"])
+                combined.append(g)
 
-    return combined
+        data_dict[comp["name"]] = combined
+    return data_dict, datetime.datetime.now()
 
 
 # ==========================================
-# 6. 画面UIと操作パネル（サイドバー）
+# 5. 画面UIと操作パネル（サイドバー）
 # ==========================================
 today = datetime.date.today()
 default_start = today - datetime.timedelta(days=7)
 
 with st.sidebar:
-    st.header("⚙️ 巡回・抽出条件")
+    st.header("⚙️ 絞り込み条件")
 
-    st.write("**1. 巡回対象期間**")
+    st.write("**1. 表示対象期間**")
     date_range = st.date_input(
         "開始日と終了日を選択してください",
         value=(default_start, today),
@@ -752,7 +760,6 @@ with st.sidebar:
     st.markdown("---")
     st.write("**2. 会社・種別の絞り込み**")
 
-    # ★ご指定通りの選択肢に修正・追加
     selected_category = st.radio(
         "会社分類",
         [
@@ -772,127 +779,130 @@ with st.sidebar:
     search_keyword = st.text_input("キーワード検索", "")
 
     st.markdown("---")
-    run_button = st.button(
-        "🔄 公式サイトを巡回して取得", type="primary", use_container_width=True
+    st.write("**3. データ更新制御**")
+    st.caption("※サーバー負荷軽減のため、取得結果は1時間キャッシュ（自動記憶）されます。")
+    if st.button("🔄 キャッシュを破棄して最新取得", type="primary", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+
+    st.markdown("---")
+    st.caption(
+        "**【免責事項】**\n"
+        "本サイトは公開情報を自動収集・整理して表示する個人開発のツールです。各鉄道会社および関連企業とは一切関係ありません。情報の完全性・正確性を保証するものではありません。"
     )
 
 # ==========================================
-# 7. データ取得の実行
+# 6. データ取得（キャッシュから即時呼び出し）
 # ==========================================
-if "fetched_data" not in st.session_state:
-    st.session_state.fetched_data = {}
+with st.spinner("データ確認中...（キャッシュから超高速読込）"):
+    all_cached_data, last_updated = get_cached_railway_data(COMPANIES)
 
-if run_button:
-    new_data = {}
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-
-    for i, comp in enumerate(COMPANIES):
-        status_text.text(f"巡回中: {comp['name']} ({i+1}/{len(COMPANIES)}) ...")
-        news_items = fetch_company_all(comp, start_date, end_date)
-        new_data[comp["name"]] = news_items
-        progress_bar.progress((i + 1) / len(COMPANIES))
-
-    st.session_state.fetched_data = new_data
-    status_text.empty()
-    progress_bar.empty()
-    st.toast("全社の巡回・データ取得が完了しました！", icon="✅")
+# 更新日時の目安表示
+st.caption(f"🕒 最終巡回時刻: {last_updated.strftime('%Y-%m-%d %H:%M:%S')} （1時間ごとに自動再巡回）")
 
 # ==========================================
-# 8. 結果の表示（会社分類フィルタ＆公式優先ソート）
+# 7. 結果の描画（「公式発表」優先ソート）
 # ==========================================
-if not st.session_state.fetched_data and not run_button:
-    st.info(
-        "👈 左のサイドバーで期間を指定し、「公式サイトを巡回して取得」ボタンを押してください。"
+current_category = None
+total_displayed = 0
+
+for comp in COMPANIES:
+    # 会社分類の絞り込み判定
+    if selected_category == "JR":
+        if comp["category"] != "JR":
+            continue
+    elif selected_category == "私鉄":
+        if comp["category"] != "私鉄" or comp.get("is_kintetsu_sub", False):
+            continue
+    elif selected_category == "近鉄グループ（近鉄GHD＋近畿日本鉄道）":
+        if not comp.get("is_kintetsu_main", False):
+            continue
+    elif selected_category == "近鉄グループ（子会社含む）":
+        if not (comp.get("is_kintetsu_main", False) or comp.get("is_kintetsu_sub", False)):
+            continue
+
+    raw_items = all_cached_data.get(comp["name"], [])
+
+    # キャッシュデータ（21日分）から、ユーザー指定期間（start_date 〜 end_date）のみを即座に抽出
+    period_items = [
+        item for item in raw_items
+        if start_date <= item["date"] <= end_date
+    ]
+
+    # キーワード検索
+    if search_keyword:
+        kw = search_keyword.lower()
+        period_items = [
+            item
+            for item in period_items
+            if kw in item["title"].lower()
+            or kw in item["summary"].lower()
+            or kw in comp["name"].lower()
+        ]
+
+    # 「公式発表」を上（最新順）、「ニュース」を下（最新順）に並べる
+    official_items = [i for i in period_items if i["type"] == "公式発表"]
+    general_items = [i for i in period_items if i["type"] == "ニュース（一般サイト）"]
+
+    official_items.sort(key=lambda x: x["date"], reverse=True)
+    general_items.sort(key=lambda x: x["date"], reverse=True)
+
+    if selected_type == "公式発表":
+        display_items = official_items
+    elif selected_type == "ニュース（一般サイト）":
+        display_items = general_items
+    else:
+        display_items = official_items + general_items
+
+    # セクションヘッダー（JR / 私鉄 / 近鉄グループ主要子会社）
+    if comp["category"] != current_category:
+        if current_category is not None:
+            st.write("<br><br>", unsafe_allow_html=True)
+        current_category = comp["category"]
+        st.markdown(f"## 【 {current_category}各社 】（東から西順）")
+        st.divider()
+
+    # 会社ヘッダー
+    main_url = comp["urls"][0]
+    st.markdown(
+        f"### 🏢 {comp['name']} <span style='font-size:0.8em;"
+        f" color:gray;'>（{comp['region']}）</span> [公式HP"
+        f" ↗]({main_url})",
+        unsafe_allow_html=True,
     )
-else:
-    current_category = None
 
-    for comp in COMPANIES:
-        # ★会社分類の絞り込み判定
-        if selected_category == "JR":
-            if comp["category"] != "JR":
-                continue
-        elif selected_category == "私鉄":
-            # 「私鉄」の時は子会社群は除外（近鉄本体のみ表示）
-            if comp["category"] != "私鉄" or comp.get("is_kintetsu_sub", False):
-                continue
-        elif selected_category == "近鉄グループ（近鉄GHD＋近畿日本鉄道）":
-            if not comp.get("is_kintetsu_main", False):
-                continue
-        elif selected_category == "近鉄グループ（子会社含む）":
-            if not (comp.get("is_kintetsu_main", False) or comp.get("is_kintetsu_sub", False)):
-                continue
+    if not display_items:
+        type_label = f"（{selected_type}）" if selected_type != "すべて" else ""
+        st.info(f"📅 指定期間・条件内の発表{type_label}は **なし** です。")
+        st.write("")
+    else:
+        total_displayed += len(display_items)
+        for item in display_items:
+            is_official = item["type"] == "公式発表"
+            type_badge = "📢 **公式発表**" if is_official else "📰 **ニュース（一般サイト）**"
+            file_badge = "🟥 **[PDF資料]**" if item["is_pdf"] else "🌐 **[Web発表]**"
 
-        all_items = st.session_state.fetched_data.get(comp["name"], [])
+            with st.container(border=True):
+                col_left, col_right = st.columns([1, 4])
+                with col_left:
+                    st.write(f"📅 **{item['date']}**")
+                    st.markdown(type_badge)
+                    st.markdown(file_badge)
+                    st.caption(f"情報元: {item['source']}")
+                with col_right:
+                    st.markdown(
+                        f"##### <a href='{item['url']}' target='_blank' rel='noopener noreferrer'>{item['title']}</a>",
+                        unsafe_allow_html=True,
+                    )
+                    st.write(f"**主な内容:** {item['summary']}")
+                    st.markdown(
+                        f"🔗 **掲載ページ:** <a href='{item['url']}' target='_blank' rel='noopener noreferrer'>{item['url']}</a>",
+                        unsafe_allow_html=True,
+                    )
+        st.write("")
 
-        # キーワード検索
-        if search_keyword:
-            kw = search_keyword.lower()
-            all_items = [
-                item
-                for item in all_items
-                if kw in item["title"].lower()
-                or kw in item["summary"].lower()
-                or kw in comp["name"].lower()
-            ]
-
-        # 「公式発表」を上（最新順）、「ニュース」を下（最新順）に並べる
-        official_items = [i for i in all_items if i["type"] == "公式発表"]
-        general_items = [i for i in all_items if i["type"] == "ニュース（一般サイト）"]
-
-        official_items.sort(key=lambda x: x["date"], reverse=True)
-        general_items.sort(key=lambda x: x["date"], reverse=True)
-
-        if selected_type == "公式発表":
-            display_items = official_items
-        elif selected_type == "ニュース（一般サイト）":
-            display_items = general_items
-        else:
-            display_items = official_items + general_items
-
-        # セクションヘッダー（JR / 私鉄 / 近鉄グループ主要子会社）
-        if comp["category"] != current_category:
-            if current_category is not None:
-                st.write("<br><br>", unsafe_allow_html=True)
-            current_category = comp["category"]
-            st.markdown(f"## 【 {current_category}各社 】（東から西順）")
-            st.divider()
-
-        # 会社ヘッダー
-        main_url = comp["urls"][0]
-        st.markdown(
-            f"### 🏢 {comp['name']} <span style='font-size:0.8em;"
-            f" color:gray;'>（{comp['region']}）</span> [公式HP"
-            f" ↗]({main_url})",
-            unsafe_allow_html=True,
-        )
-
-        if not display_items:
-            type_label = f"（{selected_type}）" if selected_type != "すべて" else ""
-            st.info(f"📅 指定期間・条件内の発表{type_label}は **なし** です。")
-            st.write("")
-        else:
-            for item in display_items:
-                is_official = item["type"] == "公式発表"
-                type_badge = "📢 **公式発表**" if is_official else "📰 **ニュース（一般サイト）**"
-                file_badge = "🟥 **[PDF資料]**" if item["is_pdf"] else "🌐 **[Web発表]**"
-
-                with st.container(border=True):
-                    col_left, col_right = st.columns([1, 4])
-                    with col_left:
-                        st.write(f"📅 **{item['date']}**")
-                        st.markdown(type_badge)
-                        st.markdown(file_badge)
-                        st.caption(f"情報元: {item['source']}")
-                    with col_right:
-                        st.markdown(
-                            f"##### <a href='{item['url']}' target='_blank' rel='noopener noreferrer'>{item['title']}</a>",
-                            unsafe_allow_html=True,
-                        )
-                        st.write(f"**主な内容:** {item['summary']}")
-                        st.markdown(
-                            f"🔗 **掲載ページ:** <a href='{item['url']}' target='_blank' rel='noopener noreferrer'>{item['url']}</a>",
-                            unsafe_allow_html=True,
-                        )
-            st.write("")
+# フッター免責事項
+st.write("---")
+st.caption(
+    "© 鉄道ニュース＆広報チェッカー | 本アプリは各社公式ホームページおよび報道ニュースを巡回・整理して提供しています。リンク先コンテンツの著作権は各社に帰属します。"
+)
