@@ -1,3 +1,4 @@
+import base64
 import datetime
 import email.utils
 import gzip
@@ -13,12 +14,12 @@ import streamlit as st
 
 # ページ基本設定
 st.set_page_config(
-    page_title="全国大手鉄道＆近鉄グループ ニュース・広報チェッカー",
+    page_title="全国大手鉄道会社  広報発表・ニュース 概要",
     page_icon="🚆",
     layout="wide",
 )
 
-st.title("🚆 全国大手鉄道会社 ニュース・広報発表 巡回チェッカー")
+st.title("🚆 全国大手鉄道会社  広報発表・ニュース 概要")
 st.caption(
     "JR各社・大手私鉄・地下鉄および近鉄グループ各社の公式ホームページ・最新ニュースを一覧表示します。"
 )
@@ -562,6 +563,41 @@ COMPANIES = [
     },
 ]
 
+# 主要ニュースメディアのドメイン対応表（実際のサイト名を表示）
+MEDIA_NAME_MAP = {
+    "asahi.com": "朝日新聞デジタル",
+    "nikkei.com": "日本経済新聞",
+    "yomiuri.co.jp": "読売新聞オンライン",
+    "mainichi.jp": "毎日新聞",
+    "sankei.com": "産経ニュース",
+    "yahoo.co.jp": "Yahoo!ニュース",
+    "trafficnews.jp": "乗りものニュース",
+    "tetsudo.com": "鉄道コム",
+    "railf.jp": "鉄道ファン (railf.jp)",
+    "news.mynavi.jp": "マイナビニュース",
+    "itmedia.co.jp": "ITmedia",
+    "toyokeizai.net": "東洋経済オンライン",
+    "diamond.jp": "ダイヤモンド・オンライン",
+    "kyodo.co.jp": "共同通信",
+    "nordot.app": "ノードット (共同通信系)",
+    "jiji.com": "時事通信",
+    "nhk.or.jp": "NHK NEWS",
+    "kobe-np.co.jp": "神戸新聞NEXT",
+    "kyoto-np.co.jp": "京都新聞",
+    "chunichi.co.jp": "中日新聞",
+    "tokyo-np.co.jp": "東京新聞",
+    "hokkaido-np.co.jp": "北海道新聞",
+    "nishinippon.co.jp": "西日本新聞",
+    "prtimes.jp": "PR TIMES",
+    "atpress.ne.jp": "@Press",
+    "reuters.com": "ロイター",
+    "bloomberg.co.jp": "ブルームバーグ",
+    "fnn.jp": "FNNプライムオンライン",
+    "tv-asahi.co.jp": "テレ朝news",
+    "tbs.co.jp": "TBS NEWS DIG",
+    "ntv.co.jp": "日テレNEWS",
+}
+
 GENERIC_LINK_TEXTS = {
     "一覧を見る", "ニュース一覧を見る", "お知らせ一覧を見る", "過去の一覧を見る",
     "リリース一覧を見る", "一覧はこちら", "一覧へ", "一覧", "詳しく見る",
@@ -808,7 +844,6 @@ def fetch_official_releases(company_info, max_days_back=21):
                 if len(clean_t) < 5 or clean_t in GENERIC_LINK_TEXTS:
                     continue
 
-                # 周辺にあるPDFリンクの探索
                 pdf_m = re.search(r'href=["\']([^"\']+\.pdf)["\']', surrounding, re.IGNORECASE)
                 detected_pdf = urllib.parse.urljoin(final_base_url, pdf_m.group(1).strip()) if pdf_m else None
 
@@ -817,12 +852,11 @@ def fetch_official_releases(company_info, max_days_back=21):
 
                 if full_url.lower().endswith(".pdf"):
                     pdf_url = full_url
-                    # 周辺から記事ページ（HTML）を探す
                     page_m = re.search(r'href=["\']([^"\']*(?:page_|article/)[^"\']*\.html)["\']', surrounding, re.IGNORECASE)
                     if page_m:
                         page_url = urllib.parse.urljoin(final_base_url, page_m.group(1).strip())
 
-                # JR西日本でHTMLページ内にPDFリンクがある場合の取得補完
+                # JR西日本のPDF探索補完
                 if company_info["name"] == "JR西日本" and not pdf_url and page_url.endswith(".html"):
                     try:
                         sub_req = urllib.request.Request(page_url, headers=headers)
@@ -855,6 +889,7 @@ def fetch_official_releases(company_info, max_days_back=21):
 
 
 def fetch_general_news(query, max_days_back=21):
+    """一般ニュースメディアから記事を取得（実際のメディア名を正確に抽出）"""
     results = []
     encoded_q = urllib.parse.quote(query)
     rss_url = f"https://www.bing.com/news/search?q={encoded_q}&format=rss&mkt=ja-JP"
@@ -895,6 +930,20 @@ def fetch_general_news(query, max_days_back=21):
             if not link or "news.google.com" in link:
                 continue
 
+            # ★ Bingの中継URLを本来のニュースURLに自動復元
+            if "bing.com" in link:
+                u_match = re.search(r'[?&]u=a1([a-zA-Z0-9_\-]+)', link)
+                if u_match:
+                    try:
+                        b64_str = u_match.group(1)
+                        b64_str += '=' * (-len(b64_str) % 4)
+                        decoded_bytes = base64.urlsafe_b64decode(b64_str)
+                        real_url = decoded_bytes.decode('utf-8', errors='ignore')
+                        if real_url.startswith("http"):
+                            link = real_url
+                    except Exception:
+                        pass
+
             item_date = None
             if pubdate_str:
                 try:
@@ -915,8 +964,42 @@ def fetch_general_news(query, max_days_back=21):
             clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
             summary = clean_desc if len(clean_desc) > 10 else clean_title
 
+            # ★ 実際のニュースサイト名（朝日新聞、日経新聞等）を特定
+            source_name = ""
+
+            # 1. XMLタグ内のsource情報探索
+            for child in item:
+                tag_name = child.tag.split("}")[-1].lower()
+                if "source" in tag_name:
+                    txt = (child.text or "").strip()
+                    if txt and txt.lower() not in ["bing", "bing.com"]:
+                        source_name = txt
+                        break
+
+            # 2. タイトル末尾の " - メディア名" から取得
+            if not source_name or source_name.lower() in ["bing", "bing.com"]:
+                if " - " in clean_title:
+                    parts = clean_title.rsplit(" - ", 1)
+                    cand = parts[1].strip()
+                    clean_title = parts[0].strip()
+                    if cand and cand.lower() not in ["bing", "bing.com"]:
+                        source_name = cand
+
+            # 3. リンクのドメインから対応表で正式名称を取得
             parsed_url = urllib.parse.urlparse(link)
             domain = parsed_url.netloc.lower().replace("www.", "")
+
+            for domain_key, media_label in MEDIA_NAME_MAP.items():
+                if domain_key in domain:
+                    source_name = media_label
+                    break
+
+            # それでも未特定の場合はドメイン名から「bing」以外で整形
+            if not source_name or source_name.lower() in ["bing", "bing.com"]:
+                if "bing" not in domain:
+                    source_name = domain
+                else:
+                    source_name = "ニュース報道"
 
             results.append({
                 "date": item_date,
@@ -925,7 +1008,7 @@ def fetch_general_news(query, max_days_back=21):
                 "summary": summary[:140] + ("..." if len(summary) > 140 else ""),
                 "url": link,
                 "pdf_url": link if link.lower().endswith(".pdf") else None,
-                "source": domain,
+                "source": source_name,
                 "is_pdf": link.lower().endswith(".pdf"),
             })
     except Exception:
@@ -958,7 +1041,7 @@ def get_cached_railway_data(_companies_list):
 
 
 # ==========================================
-# 5. サイドバー操作パネル（「表示形式」配下）
+# 5. サイドバー操作パネル
 # ==========================================
 today = datetime.date.today()
 default_start = today - datetime.timedelta(days=7)
@@ -1065,7 +1148,6 @@ st.markdown(
         gap: 12px;
         padding: 2px 0;
     }
-    /* ★ボタン見出しの文字サイズを大きく調整 */
     .slim-label {
         flex-shrink: 0;
         width: 140px;
@@ -1073,208 +1155,4 @@ st.markdown(
         font-size: 1.15em;
         line-height: 1.3;
     }
-    .label-jr { color: #0284c7; }
-    .label-private { color: #10b981; }
-    .label-kintetsu { color: #f59e0b; }
-    .slim-btn-wrapper {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-        flex-grow: 1;
-    }
-    .slim-btn {
-        display: inline-block;
-        padding: 3px 10px;
-        background-color: var(--secondary-background-color, #ffffff);
-        color: var(--text-color, #1f2937);
-        text-decoration: none;
-        border-radius: 12px;
-        border: 1px solid rgba(128, 128, 128, 0.25);
-        font-size: 0.78em;
-        font-weight: 500;
-        line-height: 1.5;
-        transition: all 0.15s ease;
-    }
-    .slim-btn:hover {
-        background-color: #0284c7;
-        color: #ffffff !important;
-        border-color: #0284c7;
-        text-decoration: none;
-    }
-    .link-action-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        margin-top: 6px;
-        padding: 4px 12px;
-        background-color: rgba(2, 132, 199, 0.08);
-        color: #0284c7 !important;
-        border: 1px solid rgba(2, 132, 199, 0.35);
-        border-radius: 6px;
-        font-size: 0.82em;
-        font-weight: 600;
-        text-decoration: none;
-        transition: all 0.15s ease;
-    }
-    .link-action-btn:hover {
-        background-color: #0284c7;
-        color: #ffffff !important;
-        border-color: #0284c7;
-        text-decoration: none;
-    }
-    @media (max-width: 768px) {
-        .slim-jump-row {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 4px;
-        }
-        .slim-label {
-            width: auto;
-        }
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-jr_buttons = [c for c in COMPANIES if c["is_jr"]] if selected_category in ["すべて", "JR"] else []
-private_buttons = [c for c in COMPANIES if c["is_private"]] if selected_category in ["すべて", "私鉄"] else []
-kintetsu_buttons = [c for c in COMPANIES if c["is_kintetsu"]] if selected_category in ["すべて", "近鉄グループ"] else []
-
-def make_slim_btn_html(comp_list):
-    if not comp_list:
-        return "<span style='font-size:0.75em; color:gray;'>（選択対象外）</span>"
-    return "".join([f"<a href='#{c['id']}' class='slim-btn'>{c['name']}</a>" for c in comp_list])
-
-jump_html = f"""
-<div class="slim-jump-container">
-  <div class="slim-jump-row">
-    <div class="slim-label label-jr">🚆 JR</div>
-    <div class="slim-btn-wrapper">
-      {make_slim_btn_html(jr_buttons)}
-    </div>
-  </div>
-  <div class="slim-jump-row">
-    <div class="slim-label label-private">🚇 私鉄</div>
-    <div class="slim-btn-wrapper">
-      {make_slim_btn_html(private_buttons)}
-    </div>
-  </div>
-  <div class="slim-jump-row">
-    <div class="slim-label label-kintetsu">🏢 近鉄グループ</div>
-    <div class="slim-btn-wrapper">
-      {make_slim_btn_html(kintetsu_buttons)}
-    </div>
-  </div>
-</div>
-"""
-
-st.markdown(jump_html, unsafe_allow_html=True)
-
-# ==========================================
-# 8. 結果の描画（「（東から西順）」削除・JR西日本PDF分離対応）
-# ==========================================
-for group_title, comp_list in render_groups:
-    st.write("<br>", unsafe_allow_html=True)
-    # ★「（東から西順）」を削除し、「【 JR 】」等に修正
-    st.markdown(f"## 【 {group_title} 】")
-    st.divider()
-
-    for comp in comp_list:
-        raw_items = all_cached_data.get(comp["name"], [])
-
-        period_items = [
-            item for item in raw_items
-            if start_date <= item["date"] <= end_date
-        ]
-
-        if search_keyword:
-            kw = search_keyword.lower()
-            period_items = [
-                item
-                for item in period_items
-                if kw in item["title"].lower()
-                or kw in item["summary"].lower()
-                or kw in comp["name"].lower()
-            ]
-
-        official_items = [i for i in period_items if i["type"] == "公式発表"]
-        general_items = [i for i in period_items if i["type"] == "ニュース（一般サイト）"]
-
-        official_items.sort(key=lambda x: x["date"], reverse=True)
-        general_items.sort(key=lambda x: x["date"], reverse=True)
-
-        if selected_type == "公式発表":
-            display_items = official_items
-        elif selected_type == "ニュース（一般サイト）":
-            display_items = general_items
-        else:
-            display_items = official_items + general_items
-
-        main_url = comp["urls"][0]
-
-        # 会社名ヘッダー
-        st.markdown(
-            f"""
-            <div id='{comp['id']}' style='margin-top: 36px; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 3px solid #0284c7; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px;'>
-                <span style='font-size: 1.85em; font-weight: 800; color: #1e293b; line-height: 1.2;'>🏢 {comp['name']}</span>
-                <span style='font-size: 1.05em; color: gray; font-weight: 500;'>（{comp['region']}）</span>
-                <a href='{main_url}' target='_blank' rel='noopener noreferrer' style='font-size: 0.9em; font-weight: 600; color: #0284c7; text-decoration: none;'>[公式HP ↗]</a>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        if not display_items:
-            type_label = f"（{selected_type}）" if selected_type != "すべて" else ""
-            st.info(f"📅 指定期間・条件内の発表{type_label}は **なし** です。")
-            st.write("")
-        else:
-            for item in display_items:
-                is_official = item["type"] == "公式発表"
-                type_badge = "📢 **公式発表**" if is_official else "📰 **ニュース（一般サイト）**"
-
-                # ★ JR西日本の専用リンク制御
-                if comp["name"] == "JR西日本":
-                    # タイトルクリックで掲載ページ（Webページ）
-                    title_link = item["url"]
-                    # 下のボタンは「掲載資料（PDF）を開く」でPDFへ（PDFが無い場合はWebページ）
-                    action_link = item.get("pdf_url") or item["url"]
-                    action_caption = "掲載資料（PDF）を開く ↗"
-                    file_badge = "🟥 **[PDF資料]**"
-                else:
-                    title_link = item["url"]
-                    action_link = item.get("pdf_url") or item["url"]
-                    action_caption = "掲載資料（PDF）を開く ↗" if item["is_pdf"] else "掲載ページを開く ↗"
-                    file_badge = "🟥 **[PDF資料]**" if item["is_pdf"] else "🌐 **[Web発表]**"
-
-                with st.container(border=True):
-                    col_left, col_right = st.columns([1, 4])
-                    with col_left:
-                        st.write(f"📅 **{item['date']}**")
-                        st.markdown(type_badge)
-                        st.markdown(file_badge)
-                        st.caption(f"情報元: {item['source']}")
-                    with col_right:
-                        # タイトルリンク（掲載ページへ飛ぶ）
-                        st.markdown(
-                            f"##### <a href='{title_link}' target='_blank' rel='noopener noreferrer'>{item['title']}</a>",
-                            unsafe_allow_html=True,
-                        )
-
-                        # 「見出し＋概要」選択時のみ概要テキストを表示
-                        if display_mode == "見出し＋概要":
-                            st.write(f"**主な内容:** {item['summary']}")
-
-                        # 掲載ボタン
-                        st.markdown(
-                            f"<a href='{action_link}' target='_blank' rel='noopener noreferrer' class='link-action-btn'>🔗 {action_caption}</a>",
-                            unsafe_allow_html=True,
-                        )
-            st.write("")
-
-# フッター免責事項
-st.write("---")
-st.caption(
-    "© 鉄道ニュース＆広報チェッカー | 本アプリは各社公式ホームページおよび報道ニュースを巡回・整理して提供しています。リンク先コンテンツの著作権は各社に帰属します。"
-)
+    .label-jr { color: #0284c7
