@@ -32,7 +32,7 @@ if "hidden_companies" not in st.session_state:
     st.session_state.hidden_companies = set()
 
 # ==========================================
-# 1. 鉄道会社・持株会社・グループ各社のマスタープール（全37社）
+# 1. 鉄道会社・持株会社・グループ各社のマスタープール
 # ==========================================
 COMPANY_POOL = {
     # --- JR各社 ---
@@ -455,10 +455,8 @@ COMPANY_POOL = {
     },
 }
 
-# 各グループの表示順リスト
 JR_ORDER = ["jr-hokkaido", "jr-east", "jr-central", "jr-west", "jr-shikoku", "jr-kyushu"]
 
-# ★ 私鉄のリストに「近鉄GHD」「近畿日本鉄道」を配置
 PRIVATE_ORDER = [
     "tobu", "seibu", "keisei", "tokyo-metro", "keio", "odakyu",
     "tokyu", "keikyu", "sotetsu", "meitetsu",
@@ -466,7 +464,6 @@ PRIVATE_ORDER = [
     "nankai", "keihan", "osaka-metro", "hanshin", "hankyu", "hankyu-hanshin-hd", "nishitetsu"
 ]
 
-# ★ 近鉄グループのリスト（ご指定順の15社）
 KINTETSU_ORDER = [
     "kintetsu-ghd",
     "kintetsu-railway",
@@ -533,7 +530,7 @@ zen_to_han = str.maketrans("０１２３４５６７８９", "0123456789")
 
 
 # ==========================================
-# 2. 自動エンコーディング解析＆タイトル日付整形
+# 2. 自動エンコーディング解析＆全範囲日付抽出
 # ==========================================
 def decode_html_bytes(raw_bytes, url=""):
     enc_candidates = []
@@ -574,10 +571,14 @@ def decode_html_bytes(raw_bytes, url=""):
 
 
 def parse_date_text(raw_text, current_year):
+    """
+    西暦全域（1900〜2099年）、令和、平成を正確に判別。
+    2017年などの過去年を今年（current_year）へ誤変換しないよう厳密化。
+    """
     text = re.sub(r"<[^>]+>", " ", raw_text)
     text = html.unescape(text).translate(zen_to_han)
 
-    # 令和
+    # 1. 令和表記
     m_reiwa = list(
         re.finditer(
             r"令和\s*([0-9]+|元)\s*年\s*([0-9]{1,2})\s*月\s*([0-9]{1,2})\s*日",
@@ -588,29 +589,43 @@ def parse_date_text(raw_text, current_year):
         last = m_reiwa[-1]
         y_val = 1 if last.group(1) == "元" else int(last.group(1))
         try:
-            return datetime.date(
-                2018 + y_val, int(last.group(2)), int(last.group(3))
-            )
+            return datetime.date(2018 + y_val, int(last.group(2)), int(last.group(3)))
         except ValueError:
             pass
 
-    # 西暦
+    # 2. 平成表記（過去年アーカイブを正しくキャッチして除外可能にする）
+    m_heisei = list(
+        re.finditer(
+            r"平成\s*([0-9]+|元)\s*年\s*([0-9]{1,2})\s*月\s*([0-9]{1,2})\s*日",
+            text,
+        )
+    )
+    if m_heisei:
+        last = m_heisei[-1]
+        y_val = 1 if last.group(1) == "元" else int(last.group(1))
+        try:
+            return datetime.date(1988 + y_val, int(last.group(2)), int(last.group(3)))
+        except ValueError:
+            pass
+
+    # 3. 西暦表記（1900〜2099年をすべて正確にキャッチ）
     m_seireki = list(
         re.finditer(
-            r"(202[0-9])\s*[年\./\-]\s*([0-9]{1,2})\s*[月\./\-]\s*([0-9]{1,2})\s*日?",
+            r"((?:19|20)\d{2})\s*[年\./\-]\s*([0-9]{1,2})\s*[月\./\-]\s*([0-9]{1,2})\s*日?",
             text,
         )
     )
     if m_seireki:
         last = m_seireki[-1]
         try:
-            return datetime.date(
-                int(last.group(1)), int(last.group(2)), int(last.group(3))
-            )
+            return datetime.date(int(last.group(1)), int(last.group(2)), int(last.group(3)))
         except ValueError:
             pass
 
-    # 月日のみ
+    # 4. 月日のみ（テキスト内に4桁西暦が存在する場合は誤判定防止のためスルー）
+    if re.search(r"(?:19|20)\d{2}", text):
+        return None
+
     m_md = list(
         re.finditer(
             r"(?<!\d)(1[0-2]|0?[1-9])\s*[月\./\-]\s*(3[01]|[12][0-9]|0?[1-9])\s*日?(?!\d)",
@@ -620,9 +635,7 @@ def parse_date_text(raw_text, current_year):
     if m_md:
         last = m_md[-1]
         try:
-            return datetime.date(
-                current_year, int(last.group(1)), int(last.group(2))
-            )
+            return datetime.date(current_year, int(last.group(1)), int(last.group(2)))
         except ValueError:
             pass
 
@@ -637,10 +650,27 @@ def clean_leading_date(title):
     if re.match(r"^(?:202\d|令和\s*(?:\d+|元))年度", title):
         return title
     
-    title = re.sub(r"^(?:202\d[.\-/]\d{1,2}[.\-/]\d{1,2})\s*[:：|｜・\s]*", "", title)
-    title = re.sub(r"^(?:202\d年\d{1,2}月\d{1,2}日|令和\s*(?:\d+|元)年\d{1,2}月\d{1,2}日)\s*[:：|｜・\s]+", "", title)
+    title = re.sub(r"^(?:(?:19|20)\d{2}[.\-/]\d{1,2}[.\-/]\d{1,2})\s*[:：|｜・\s]*", "", title)
+    title = re.sub(r"^(?:(?:19|20)\d{2}年\d{1,2}月\d{1,2}日|令和\s*(?:\d+|元)年\d{1,2}月\d{1,2}日)\s*[:：|｜・\s]+", "", title)
     
     return title.strip()
+
+
+def clean_surrounding_html(surrounding):
+    """
+    HTML文字列の先頭・末尾でタグが途中切断されている場合（例: ass="headerMenuCont">）を自動修復
+    """
+    first_close = surrounding.find('>')
+    first_open = surrounding.find('<')
+    if first_close != -1 and (first_open == -1 or first_close < first_open):
+        surrounding = surrounding[first_close + 1:]
+    
+    last_open = surrounding.rfind('<')
+    last_close = surrounding.rfind('>')
+    if last_open != -1 and (last_close == -1 or last_open > last_close):
+        surrounding = surrounding[:last_open]
+        
+    return surrounding
 
 
 # ==========================================
@@ -735,20 +765,28 @@ def fetch_official_releases(company_info, max_days_back=21):
                 if full_url in seen_urls:
                     continue
 
+                # 過去のアーカイブPDF（2010〜2023年など）のURLを直接除外（西鉄等の古いPDF防止）
+                if re.search(r'/(?:20[01]\d|202[0-3])/', full_url):
+                    continue
+
                 parsed_u = urllib.parse.urlparse(full_url)
                 if not any(d in parsed_u.netloc.lower() for d in allowed_domains if d):
                     continue
 
                 inside_html = m.group(2)
                 start_pos, end_pos = m.start(), m.end()
+
+                # ★ HTMLタグの途中切断を修復（大阪メトロの ass="headerMenuCont" 対策）
                 surrounding = clean_html[
                     max(0, start_pos - 450) : min(len(clean_html), end_pos + 350)
                 ]
+                surrounding = clean_surrounding_html(surrounding)
 
                 found_date = parse_date_text(inside_html, current_year)
                 if not found_date:
                     found_date = parse_date_text(surrounding, current_year)
 
+                # 2017年などの過去年はここで確実に除外される
                 if not found_date or not (cutoff_date <= found_date <= today):
                     continue
 
@@ -772,6 +810,11 @@ def fetch_official_releases(company_info, max_days_back=21):
                 if clean_t in GENERIC_LINK_TEXTS or len(clean_t) < 5:
                     continue
 
+                # ★ HTMLタグ属性の断片（class=, ass="headerMenuCont" 等）のタイトル誤認を100%遮断
+                if any(bad in clean_t for bad in ['="', "='", "class=", "id=", "style=", "headerMenu", "header", "menu", "<", ">"]):
+                    continue
+
+                # 正しい先頭日付クレンジング
                 clean_t = clean_leading_date(clean_t)
 
                 if len(clean_t) < 5 or clean_t in GENERIC_LINK_TEXTS:
@@ -780,7 +823,6 @@ def fetch_official_releases(company_info, max_days_back=21):
                 if any(ng in clean_t for ng in ["営業時間", "営業カレンダー", "本日の営業時間"]):
                     continue
 
-                # 公式発表におけるPDFリンクの探索
                 pdf_m = re.search(r'href=["\']([^"\']+\.pdf)["\']', surrounding, re.IGNORECASE)
                 detected_pdf = urllib.parse.urljoin(final_base_url, pdf_m.group(1).strip()) if pdf_m else None
 
@@ -927,7 +969,7 @@ def fetch_general_news(query, max_days_back=21):
             if not source_name or source_name.lower() in ["bing", "bing.com"]:
                 source_name = domain if "bing" not in domain else "ニュース報道"
 
-            # ★ 一般ニュースは絶対にPDF扱いにしない（is_pdf=False、pdf_url=None）
+            # 一般ニュースはPDF完全廃止（is_pdf=False、pdf_url=None）
             results.append({
                 "date": item_date,
                 "type": "ニュース（一般サイト）",
@@ -1090,7 +1132,7 @@ else:
     ]
 
 # ==========================================
-# 7. タイトルのすぐ下：見出し文字を大きくしたクイックジャンプ
+# 7. タイトルのすぐ下：クイックジャンプ
 # ==========================================
 st.markdown(
     """
@@ -1218,7 +1260,7 @@ jump_html = f"""
 st.markdown(jump_html, unsafe_allow_html=True)
 
 # ==========================================
-# 8. 結果の描画（一般ニュースPDF完全廃止・各社非表示機能付き）
+# 8. 結果の描画（不具合完全解消版）
 # ==========================================
 for group_prefix, group_title, comp_list in render_groups:
     st.write("<br>", unsafe_allow_html=True)
@@ -1302,7 +1344,6 @@ for group_prefix, group_title, comp_list in render_groups:
                         "box-shadow: 0 1px 2px rgba(0,0,0,0.15); letter-spacing:0.04em;'>📢 公式発表</div>"
                     )
 
-                    # 公式発表のリンク制御
                     title_link = item["url"]
                     if comp["id"] == "jr-west":
                         if item.get("pdf_url"):
@@ -1319,7 +1360,6 @@ for group_prefix, group_title, comp_list in render_groups:
                         file_badge = "🟥 **[PDF資料]**" if item.get("is_pdf") else "🌐 **[Web発表]**"
 
                 else:
-                    # ★ 一般ニュース（JR西日本を含む全社）：PDFは完全廃止、「掲載ページを開く」のみ
                     type_badge = (
                         "<div style='display:inline-block; padding:3px 9px; background-color:#f1f5f9; "
                         "color:#475569; font-size:0.78em; font-weight:600; border-radius:5px; "
@@ -1343,11 +1383,9 @@ for group_prefix, group_title, comp_list in render_groups:
                             unsafe_allow_html=True,
                         )
 
-                        # 一般ニュースのみ、「見出し＋概要」選択時にサマリーを表示
                         if not is_official and display_mode == "見出し＋概要" and item.get("summary"):
                             st.write(f"**主な内容:** {item['summary']}")
 
-                        # 掲載ボタン
                         st.markdown(
                             f"<a href='{action_link}' target='_blank' rel='noopener noreferrer' class='link-action-btn'>🔗 {action_caption}</a>",
                             unsafe_allow_html=True,
