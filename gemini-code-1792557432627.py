@@ -13,7 +13,7 @@ import streamlit as st
 
 # ページ基本設定
 st.set_page_config(
-    page_title="全国大手鉄道 ニュース＆広報チェッカー",
+    page_title="全国大手鉄道＆近鉄グループ ニュース・広報チェッカー",
     page_icon="🚆",
     layout="wide",
 )
@@ -24,11 +24,12 @@ st.caption(
 )
 
 # ==========================================
-# 1. 鉄道会社・持株会社・近鉄グループ子会社のマスターデータ（東から西順）
+# 1. 鉄道会社・持株会社・近鉄グループ各社のマスターデータ（東から西順）
 # ==========================================
 COMPANIES = [
     # --- JR各社（東から西順） ---
     {
+        "id": "jr-hokkaido",
         "category": "JR",
         "name": "JR北海道",
         "region": "北海道",
@@ -40,6 +41,7 @@ COMPANIES = [
         "query": "JR北海道",
     },
     {
+        "id": "jr-east",
         "category": "JR",
         "name": "JR東日本",
         "region": "東日本",
@@ -51,6 +53,7 @@ COMPANIES = [
         "query": "JR東日本",
     },
     {
+        "id": "jr-central",
         "category": "JR",
         "name": "JR東海",
         "region": "東海",
@@ -62,6 +65,7 @@ COMPANIES = [
         "query": "JR東海 OR 東海旅客鉄道",
     },
     {
+        "id": "jr-west",
         "category": "JR",
         "name": "JR西日本",
         "region": "西日本",
@@ -73,6 +77,7 @@ COMPANIES = [
         "query": "JR西日本",
     },
     {
+        "id": "jr-shikoku",
         "category": "JR",
         "name": "JR四国",
         "region": "四国",
@@ -84,6 +89,7 @@ COMPANIES = [
         "query": "JR四国",
     },
     {
+        "id": "jr-kyushu",
         "category": "JR",
         "name": "JR九州",
         "region": "九州",
@@ -96,6 +102,7 @@ COMPANIES = [
     },
     # --- 私鉄各社（東から西順） ---
     {
+        "id": "tobu",
         "category": "私鉄",
         "name": "東武鉄道",
         "region": "関東",
@@ -104,6 +111,7 @@ COMPANIES = [
         "query": "東武鉄道",
     },
     {
+        "id": "seibu",
         "category": "私鉄",
         "name": "西武鉄道（西武HD含む）",
         "region": "関東",
@@ -115,6 +123,7 @@ COMPANIES = [
         "query": "西武鉄道 OR 西武ホールディングス",
     },
     {
+        "id": "keisei",
         "category": "私鉄",
         "name": "京成電鉄",
         "region": "関東",
@@ -126,6 +135,7 @@ COMPANIES = [
         "query": "京成電鉄",
     },
     {
+        "id": "tokyo-metro",
         "category": "私鉄",
         "name": "東京メトロ",
         "region": "関東",
@@ -137,6 +147,7 @@ COMPANIES = [
         "query": "東京メトロ OR 東京地下鉄",
     },
     {
+        "id": "keio",
         "category": "私鉄",
         "name": "京王電鉄",
         "region": "関東",
@@ -148,6 +159,7 @@ COMPANIES = [
         "query": "京王電鉄",
     },
     {
+        "id": "odakyu",
         "category": "私鉄",
         "name": "小田急電鉄",
         "region": "関東",
@@ -159,6 +171,7 @@ COMPANIES = [
         "query": "小田急電鉄",
     },
     {
+        "id": "tokyu",
         "category": "私鉄",
         "name": "東急電鉄（東急HD含む）",
         "region": "関東",
@@ -170,6 +183,7 @@ COMPANIES = [
         "query": "東急電鉄 OR 東急",
     },
     {
+        "id": "keikyu",
         "category": "私鉄",
         "name": "京浜急行電鉄",
         "region": "関東",
@@ -181,6 +195,7 @@ COMPANIES = [
         "query": "京浜急行電鉄 OR 京急",
     },
     {
+        "id": "sotetsu",
         "category": "私鉄",
         "name": "相模鉄道（相鉄HD含む）",
         "region": "関東",
@@ -192,6 +207,7 @@ COMPANIES = [
         "query": "相模鉄道 OR 相鉄ホールディングス",
     },
     {
+        "id": "meitetsu",
         "category": "私鉄",
         "name": "名古屋鉄道",
         "region": "東海",
@@ -203,6 +219,7 @@ COMPANIES = [
         "query": "名古屋鉄道 OR 名鉄",
     },
     {
+        "id": "kintetsu-main",
         "category": "私鉄",
         "name": "近鉄グループ（近鉄GHD＋近畿日本鉄道）",
         "region": "関西",
@@ -216,6 +233,7 @@ COMPANIES = [
         "is_kintetsu_main": True,
     },
     {
+        "id": "nankai",
         "category": "私鉄",
         "name": "南海電気鉄道",
         "region": "関西",
@@ -227,6 +245,7 @@ COMPANIES = [
         "query": "南海電気鉄道 OR 南海電鉄",
     },
     {
+        "id": "keihan",
         "category": "私鉄",
         "name": "京阪電気鉄道（京阪HD含む）",
         "region": "関西",
@@ -238,6 +257,7 @@ COMPANIES = [
         "query": "京阪電気鉄道 OR 京阪ホールディングス",
     },
     {
+        "id": "osaka-metro",
         "category": "私鉄",
         "name": "大阪メトロ (Osaka Metro)",
         "region": "関西",
@@ -249,6 +269,7 @@ COMPANIES = [
         "query": "大阪メトロ OR \"Osaka Metro\"",
     },
     {
+        "id": "hanshin",
         "category": "私鉄",
         "name": "阪神電気鉄道",
         "region": "関西",
@@ -260,6 +281,7 @@ COMPANIES = [
         "query": "阪神電気鉄道 OR 阪神電車",
     },
     {
+        "id": "hankyu",
         "category": "私鉄",
         "name": "阪急電鉄",
         "region": "関西",
@@ -271,6 +293,7 @@ COMPANIES = [
         "query": "阪急電鉄 OR 阪急電車",
     },
     {
+        "id": "hankyu-hanshin-hd",
         "category": "私鉄",
         "name": "阪急阪神ホールディングス",
         "region": "関西",
@@ -279,6 +302,7 @@ COMPANIES = [
         "query": "阪急阪神ホールディングス OR \"阪急阪神HD\"",
     },
     {
+        "id": "nishitetsu",
         "category": "私鉄",
         "name": "西日本鉄道",
         "region": "九州",
@@ -289,8 +313,47 @@ COMPANIES = [
         ],
         "query": "西日本鉄道 OR 西鉄",
     },
-    # --- 近鉄グループ主要子会社 ---
+    # --- 近鉄グループ主要子会社・施設（追加分含む） ---
     {
+        "id": "kintetsu-fudosan",
+        "category": "近鉄グループ（主要子会社）",
+        "name": "近鉄不動産",
+        "region": "関西",
+        "official_domains": ["kintetsu-re.co.jp"],
+        "urls": [
+            "https://www.kintetsu-re.co.jp/news/",
+            "https://www.kintetsu-re.co.jp/",
+        ],
+        "query": "近鉄不動産",
+        "is_kintetsu_sub": True,
+    },
+    {
+        "id": "abeno-harukas",
+        "category": "近鉄グループ（主要子会社）",
+        "name": "あべのハルカス",
+        "region": "関西",
+        "official_domains": ["abenoharukas-300.jp"],
+        "urls": [
+            "https://www.abenoharukas-300.jp/news/",
+            "https://www.abenoharukas-300.jp/",
+        ],
+        "query": "あべのハルカス",
+        "is_kintetsu_sub": True,
+    },
+    {
+        "id": "abeno-art-museum",
+        "category": "近鉄グループ（主要子会社）",
+        "name": "あべのハルカス美術館",
+        "region": "関西",
+        "official_domains": ["aham.jp"],
+        "urls": [
+            "https://www.aham.jp/",
+        ],
+        "query": "あべのハルカス美術館",
+        "is_kintetsu_sub": True,
+    },
+    {
+        "id": "kintetsu-dept",
         "category": "近鉄グループ（主要子会社）",
         "name": "近鉄百貨店",
         "region": "関西",
@@ -303,6 +366,46 @@ COMPANIES = [
         "is_kintetsu_sub": True,
     },
     {
+        "id": "kinsho-store",
+        "category": "近鉄グループ（主要子会社）",
+        "name": "近商ストア",
+        "region": "関西",
+        "official_domains": ["kinsho-store.co.jp"],
+        "urls": [
+            "https://www.kinsho-store.co.jp/html/news.php",
+            "https://www.kinsho-store.co.jp/",
+        ],
+        "query": "近商ストア",
+        "is_kintetsu_sub": True,
+    },
+    {
+        "id": "kaiyukan",
+        "category": "近鉄グループ（主要子会社）",
+        "name": "海遊館",
+        "region": "関西",
+        "official_domains": ["kaiyukan.com"],
+        "urls": [
+            "https://www.kaiyukan.com/topics/",
+            "https://www.kaiyukan.com/",
+        ],
+        "query": "海遊館",
+        "is_kintetsu_sub": True,
+    },
+    {
+        "id": "kin-ei",
+        "category": "近鉄グループ（主要子会社）",
+        "name": "きんえい（アポロ・ルシアス）",
+        "region": "関西",
+        "official_domains": ["kin-ei.co.jp"],
+        "urls": [
+            "https://www.kin-ei.co.jp/news/",
+            "https://www.kin-ei.co.jp/",
+        ],
+        "query": "株式会社きんえい OR きんえい アポロ",
+        "is_kintetsu_sub": True,
+    },
+    {
+        "id": "kwe",
         "category": "近鉄グループ（主要子会社）",
         "name": "近鉄エクスプレス",
         "region": "関東・関西",
@@ -315,6 +418,7 @@ COMPANIES = [
         "is_kintetsu_sub": True,
     },
     {
+        "id": "knt-ct",
         "category": "近鉄グループ（主要子会社）",
         "name": "KNT-CTホールディングス（近畿日本ツーリスト等）",
         "region": "関東・関西",
@@ -327,6 +431,7 @@ COMPANIES = [
         "is_kintetsu_sub": True,
     },
     {
+        "id": "nara-kotsu",
         "category": "近鉄グループ（主要子会社）",
         "name": "奈良交通",
         "region": "関西",
@@ -339,6 +444,7 @@ COMPANIES = [
         "is_kintetsu_sub": True,
     },
     {
+        "id": "kintetsu-bus",
         "category": "近鉄グループ（主要子会社）",
         "name": "近鉄バス",
         "region": "関西",
@@ -351,6 +457,7 @@ COMPANIES = [
         "is_kintetsu_sub": True,
     },
     {
+        "id": "sanco-hd",
         "category": "近鉄グループ（主要子会社）",
         "name": "三重交通グループホールディングス（三重交通含む）",
         "region": "東海",
@@ -477,7 +584,6 @@ def parse_date_text(raw_text, current_year):
 # 3. スクレイピング（公式・一般ニュース）
 # ==========================================
 def fetch_official_releases(company_info, max_days_back=21):
-    """自社公式HPから直近発表を取得（キャッシュ内部用）"""
     results = []
     seen_urls = set()
     today = datetime.date.today()
@@ -711,14 +817,10 @@ def fetch_general_news(query, max_days_back=21):
 
 
 # ==========================================
-# 4. ★安全な全体データキャッシュエンジン（1時間保持）
+# 4. 全体データキャッシュエンジン（1時間保持）
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_cached_railway_data(_companies_list):
-    """
-    全社データを1時間に1度だけ裏側でまとめて収集し、メモリに安全記憶。
-    不特定多数のユーザーが来ても、相手先サーバーへの負担は1時間に1回のみ！
-    """
     data_dict = {}
     for comp in _companies_list:
         official = fetch_official_releases(comp, max_days_back=21)
@@ -738,7 +840,7 @@ def get_cached_railway_data(_companies_list):
 
 
 # ==========================================
-# 5. 画面UIと操作パネル（サイドバー）
+# 5. サイドバー操作パネル
 # ==========================================
 today = datetime.date.today()
 default_start = today - datetime.timedelta(days=7)
@@ -788,26 +890,20 @@ with st.sidebar:
     st.markdown("---")
     st.caption(
         "**【免責事項】**\n"
-        "本サイトは公開情報を自動収集・整理して表示する個人開発のツールです。各鉄道会社および関連企業とは一切関係ありません。情報の完全性・正確性を保証するものではありません。"
+        "本サイトは公開情報を自動収集・整理して表示する個人開発ツールです。各鉄道会社および関連企業とは一切関係ありません。情報の完全性・正確性を保証するものではありません。"
     )
 
 # ==========================================
-# 6. データ取得（キャッシュから即時呼び出し）
+# 6. データ取得（キャッシュ読込）
 # ==========================================
 with st.spinner("データ確認中...（キャッシュから超高速読込）"):
     all_cached_data, last_updated = get_cached_railway_data(COMPANIES)
 
-# 更新日時の目安表示
 st.caption(f"🕒 最終巡回時刻: {last_updated.strftime('%Y-%m-%d %H:%M:%S')} （1時間ごとに自動再巡回）")
 
-# ==========================================
-# 7. 結果の描画（「公式発表」優先ソート）
-# ==========================================
-current_category = None
-total_displayed = 0
-
+# フィルタリング対象の会社リストを特定
+active_companies = []
 for comp in COMPANIES:
-    # 会社分類の絞り込み判定
     if selected_category == "JR":
         if comp["category"] != "JR":
             continue
@@ -820,10 +916,65 @@ for comp in COMPANIES:
     elif selected_category == "近鉄グループ（子会社含む）":
         if not (comp.get("is_kintetsu_main", False) or comp.get("is_kintetsu_sub", False)):
             continue
+    active_companies.append(comp)
 
+# ==========================================
+# 7. ★タイトルのすぐ下：各社ダイレクトジャンプボタン
+# ==========================================
+st.markdown(
+    """
+    <style>
+    .jump-nav-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+        margin-bottom: 25px;
+        padding: 14px;
+        background-color: rgba(128, 128, 128, 0.08);
+        border-radius: 10px;
+        border: 1px solid rgba(128, 128, 128, 0.2);
+    }
+    .jump-btn {
+        display: inline-block;
+        padding: 5px 12px;
+        background-color: var(--secondary-background-color, #ffffff);
+        color: var(--text-color, #1f2937);
+        text-decoration: none;
+        border-radius: 16px;
+        border: 1px solid rgba(128, 128, 128, 0.3);
+        font-size: 0.84em;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    .jump-btn:hover {
+        background-color: #0284c7;
+        color: #ffffff !important;
+        border-color: #0284c7;
+        text-decoration: none;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ボタンリストをHTMLとして生成
+buttons_html = ["<div class='jump-nav-container'><span style='width:100%; font-size:0.85em; font-weight:bold; margin-bottom:4px; color:gray;'>📍 各社へクイックジャンプ:</span>"]
+for comp in active_companies:
+    buttons_html.append(f"<a href='#{comp['id']}' class='jump-btn'>{comp['name']}</a>")
+buttons_html.append("</div>")
+
+st.markdown("".join(buttons_html), unsafe_allow_html=True)
+
+# ==========================================
+# 8. 結果の描画（「公式発表」優先ソート＆アンカー配置）
+# ==========================================
+current_category = None
+
+for comp in active_companies:
     raw_items = all_cached_data.get(comp["name"], [])
 
-    # キャッシュデータ（21日分）から、ユーザー指定期間（start_date 〜 end_date）のみを即座に抽出
+    # 指定期間で絞り込み
     period_items = [
         item for item in raw_items
         if start_date <= item["date"] <= end_date
@@ -840,7 +991,7 @@ for comp in COMPANIES:
             or kw in comp["name"].lower()
         ]
 
-    # 「公式発表」を上（最新順）、「ニュース」を下（最新順）に並べる
+    # 公式発表が上、ニュースが下の順序でソート
     official_items = [i for i in period_items if i["type"] == "公式発表"]
     general_items = [i for i in period_items if i["type"] == "ニュース（一般サイト）"]
 
@@ -854,7 +1005,7 @@ for comp in COMPANIES:
     else:
         display_items = official_items + general_items
 
-    # セクションヘッダー（JR / 私鉄 / 近鉄グループ主要子会社）
+    # セクションヘッダー
     if comp["category"] != current_category:
         if current_category is not None:
             st.write("<br><br>", unsafe_allow_html=True)
@@ -862,9 +1013,10 @@ for comp in COMPANIES:
         st.markdown(f"## 【 {current_category}各社 】（東から西順）")
         st.divider()
 
-    # 会社ヘッダー
+    # ★ジャンプ先アンカー付き会社ヘッダー
     main_url = comp["urls"][0]
     st.markdown(
+        f"<div id='{comp['id']}'></div>"
         f"### 🏢 {comp['name']} <span style='font-size:0.8em;"
         f" color:gray;'>（{comp['region']}）</span> [公式HP"
         f" ↗]({main_url})",
@@ -876,7 +1028,6 @@ for comp in COMPANIES:
         st.info(f"📅 指定期間・条件内の発表{type_label}は **なし** です。")
         st.write("")
     else:
-        total_displayed += len(display_items)
         for item in display_items:
             is_official = item["type"] == "公式発表"
             type_badge = "📢 **公式発表**" if is_official else "📰 **ニュース（一般サイト）**"
