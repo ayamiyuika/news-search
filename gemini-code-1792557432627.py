@@ -12,6 +12,9 @@ import xml.etree.ElementTree as ET
 import zlib
 import streamlit as st
 
+# 日本標準時（JST）の定義
+JST = datetime.timezone(datetime.timedelta(hours=9))
+
 # ページ基本設定
 st.set_page_config(
     page_title="全国大手鉄道会社  広報発表・ニュース 概要",
@@ -23,6 +26,10 @@ st.title("🚆 全国大手鉄道会社  広報発表・ニュース 概要")
 st.caption(
     "JR各社・大手私鉄・地下鉄および近鉄グループ各社の公式ホームページ・最新ニュースを一覧表示します。"
 )
+
+# 非表示（折りたたみ）管理用のセッションステート
+if "hidden_companies" not in st.session_state:
+    st.session_state.hidden_companies = set()
 
 # ==========================================
 # 1. 鉄道会社・持株会社・近鉄グループ各社のマスターデータ
@@ -375,7 +382,6 @@ COMPANIES = [
         "is_private": False,
         "is_kintetsu": True,
     },
-    # ※近畿日本鉄道は上記「私鉄」内（id: kintetsu-railway）で登録・共用
     {
         "id": "kintetsu-fudosan",
         "name": "近鉄不動産",
@@ -563,7 +569,6 @@ COMPANIES = [
     },
 ]
 
-# 主要ニュースメディアのドメイン対応表（実際のサイト名を表示）
 MEDIA_NAME_MAP = {
     "asahi.com": "朝日新聞デジタル",
     "nikkei.com": "日本経済新聞",
@@ -856,7 +861,6 @@ def fetch_official_releases(company_info, max_days_back=21):
                     if page_m:
                         page_url = urllib.parse.urljoin(final_base_url, page_m.group(1).strip())
 
-                # JR西日本のPDF探索補完
                 if company_info["name"] == "JR西日本" and not pdf_url and page_url.endswith(".html"):
                     try:
                         sub_req = urllib.request.Request(page_url, headers=headers)
@@ -889,7 +893,6 @@ def fetch_official_releases(company_info, max_days_back=21):
 
 
 def fetch_general_news(query, max_days_back=21):
-    """一般ニュースメディアから記事を取得（実際のメディア名を正確に抽出）"""
     results = []
     encoded_q = urllib.parse.quote(query)
     rss_url = f"https://www.bing.com/news/search?q={encoded_q}&format=rss&mkt=ja-JP"
@@ -930,7 +933,6 @@ def fetch_general_news(query, max_days_back=21):
             if not link or "news.google.com" in link:
                 continue
 
-            # ★ Bingの中継URLを本来のニュースURLに自動復元
             if "bing.com" in link:
                 u_match = re.search(r'[?&]u=a1([a-zA-Z0-9_\-]+)', link)
                 if u_match:
@@ -948,9 +950,7 @@ def fetch_general_news(query, max_days_back=21):
             if pubdate_str:
                 try:
                     dt = email.utils.parsedate_to_datetime(pubdate_str)
-                    jst = dt.astimezone(
-                        datetime.timezone(datetime.timedelta(hours=9))
-                    )
+                    jst = dt.astimezone(JST)
                     item_date = jst.date()
                 except Exception:
                     pass
@@ -964,10 +964,7 @@ def fetch_general_news(query, max_days_back=21):
             clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
             summary = clean_desc if len(clean_desc) > 10 else clean_title
 
-            # ★ 実際のニュースサイト名（朝日新聞、日経新聞等）を特定
             source_name = ""
-
-            # 1. XMLタグ内のsource情報探索
             for child in item:
                 tag_name = child.tag.split("}")[-1].lower()
                 if "source" in tag_name:
@@ -976,7 +973,6 @@ def fetch_general_news(query, max_days_back=21):
                         source_name = txt
                         break
 
-            # 2. タイトル末尾の " - メディア名" から取得
             if not source_name or source_name.lower() in ["bing", "bing.com"]:
                 if " - " in clean_title:
                     parts = clean_title.rsplit(" - ", 1)
@@ -985,7 +981,6 @@ def fetch_general_news(query, max_days_back=21):
                     if cand and cand.lower() not in ["bing", "bing.com"]:
                         source_name = cand
 
-            # 3. リンクのドメインから対応表で正式名称を取得
             parsed_url = urllib.parse.urlparse(link)
             domain = parsed_url.netloc.lower().replace("www.", "")
 
@@ -994,12 +989,8 @@ def fetch_general_news(query, max_days_back=21):
                     source_name = media_label
                     break
 
-            # それでも未特定の場合はドメイン名から「bing」以外で整形
             if not source_name or source_name.lower() in ["bing", "bing.com"]:
-                if "bing" not in domain:
-                    source_name = domain
-                else:
-                    source_name = "ニュース報道"
+                source_name = domain if "bing" not in domain else "ニュース報道"
 
             results.append({
                 "date": item_date,
@@ -1037,13 +1028,16 @@ def get_cached_railway_data(_companies_list):
                 combined.append(g)
 
         data_dict[comp["name"]] = combined
-    return data_dict, datetime.datetime.now()
+
+    # ★日本時間（JST）で更新時刻を記録
+    now_jst = datetime.datetime.now(JST)
+    return data_dict, now_jst
 
 
 # ==========================================
 # 5. サイドバー操作パネル
 # ==========================================
-today = datetime.date.today()
+today = datetime.datetime.now(JST).date()
 default_start = today - datetime.timedelta(days=7)
 
 with st.sidebar:
@@ -1069,6 +1063,12 @@ with st.sidebar:
         ["見出し＋概要", "見出しのみ"],
         label_visibility="collapsed",
     )
+
+    # 記事非表示のリセットボタン
+    if st.session_state.hidden_companies:
+        if st.button("👁️ すべての会社の記事を再表示", use_container_width=True):
+            st.session_state.hidden_companies.clear()
+            st.rerun()
 
     st.markdown("---")
     st.write("**2. 会社・種別の絞り込み**")
@@ -1109,7 +1109,8 @@ with st.sidebar:
 with st.spinner("データ確認中...（キャッシュから超高速読込）"):
     all_cached_data, last_updated = get_cached_railway_data(COMPANIES)
 
-st.caption(f"🕒 最終巡回時刻: {last_updated.strftime('%Y-%m-%d %H:%M:%S')} （1時間ごとに自動再巡回）")
+# ★日本時間（JST）で表示
+st.caption(f"🕒 最終巡回時刻: {last_updated.strftime('%Y-%m-%d %H:%M:%S')} (日本時間) （1時間ごとに自動再巡回）")
 
 # 表示対象の会社リストの決定
 if selected_category == "JR":
@@ -1254,7 +1255,7 @@ jump_html = f"""
 st.markdown(jump_html, unsafe_allow_html=True)
 
 # ==========================================
-# 8. 結果の描画（実際のメディア名表示・JR西日本PDF分離対応）
+# 8. 結果の描画（各社ごとの記事非表示・折りたたみ機能付き）
 # ==========================================
 for group_title, comp_list in render_groups:
     st.write("<br>", unsafe_allow_html=True)
@@ -1293,17 +1294,36 @@ for group_title, comp_list in render_groups:
             display_items = official_items + general_items
 
         main_url = comp["urls"][0]
+        is_hidden = comp["id"] in st.session_state.hidden_companies
 
-        st.markdown(
-            f"""
-            <div id='{comp['id']}' style='margin-top: 36px; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 3px solid #0284c7; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px;'>
-                <span style='font-size: 1.85em; font-weight: 800; color: #1e293b; line-height: 1.2;'>🏢 {comp['name']}</span>
-                <span style='font-size: 1.05em; color: gray; font-weight: 500;'>（{comp['region']}）</span>
-                <a href='{main_url}' target='_blank' rel='noopener noreferrer' style='font-size: 0.9em; font-weight: 600; color: #0284c7; text-decoration: none;'>[公式HP ↗]</a>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        # ★ 会社名ヘッダーと「記事を非表示」ボタンの並列配置
+        h_col1, h_col2 = st.columns([5, 1.3])
+        with h_col1:
+            st.markdown(
+                f"""
+                <div id='{comp['id']}' style='margin-top: 18px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 3px solid #0284c7; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px;'>
+                    <span style='font-size: 1.85em; font-weight: 800; color: #1e293b; line-height: 1.2;'>🏢 {comp['name']}</span>
+                    <span style='font-size: 1.05em; color: gray; font-weight: 500;'>（{comp['region']}）</span>
+                    <a href='{main_url}' target='_blank' rel='noopener noreferrer' style='font-size: 0.9em; font-weight: 600; color: #0284c7; text-decoration: none;'>[公式HP ↗]</a>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with h_col2:
+            st.write("<div style='margin-top: 22px;'></div>", unsafe_allow_html=True)
+            btn_label = "記事を表示" if is_hidden else "記事を非表示"
+            btn_type = "primary" if is_hidden else "secondary"
+            if st.button(btn_label, key=f"btn_toggle_{comp['id']}", type=btn_type, use_container_width=True):
+                if is_hidden:
+                    st.session_state.hidden_companies.remove(comp["id"])
+                else:
+                    st.session_state.hidden_companies.add(comp["id"])
+                st.rerun()
+
+        # ★ 非表示状態なら、会社名ヘッダーのみ表示して記事内容はスキップ
+        if is_hidden:
+            st.write("")
+            continue
 
         if not display_items:
             type_label = f"（{selected_type}）" if selected_type != "すべて" else ""
