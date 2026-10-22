@@ -359,7 +359,7 @@ COMPANIES = [
         "is_private": True,
         "is_kintetsu": False,
     },
-    # --- 近鉄グループ（本体＋主要子会社・施設） ---
+    # --- 近鉄グループ（ご指定順に完全準拠） ---
     {
         "id": "kintetsu-ghd",
         "name": "近鉄GHD",
@@ -374,6 +374,7 @@ COMPANIES = [
         "is_private": False,
         "is_kintetsu": True,
     },
+    # ※近畿日本鉄道は上記「私鉄」内（id: kintetsu-railway）で登録・共用
     {
         "id": "kintetsu-fudosan",
         "name": "近鉄不動産",
@@ -402,6 +403,20 @@ COMPANIES = [
         "is_kintetsu": True,
     },
     {
+        "id": "kwe",
+        "name": "近鉄エクスプレス",
+        "region": "関東・関西",
+        "official_domains": ["kwe.co.jp", "kwe.com"],
+        "urls": [
+            "https://www.kwe.co.jp/news/",
+            "https://www.kwe.co.jp/",
+        ],
+        "query": "近鉄エクスプレス",
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
+    },
+    {
         "id": "kintetsu-dept",
         "name": "近鉄百貨店",
         "region": "関西",
@@ -411,6 +426,20 @@ COMPANIES = [
             "https://www.d-kintetsu.co.jp/",
         ],
         "query": "近鉄百貨店",
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
+    },
+    {
+        "id": "kintetsu-retailing",
+        "name": "近鉄リテーリング",
+        "region": "関西",
+        "official_domains": ["knt-rt.co.jp"],
+        "urls": [
+            "https://knt-rt.co.jp/news/",
+            "https://knt-rt.co.jp/",
+        ],
+        "query": "近鉄リテーリング",
         "is_jr": False,
         "is_private": False,
         "is_kintetsu": True,
@@ -430,34 +459,6 @@ COMPANIES = [
         "is_kintetsu": True,
     },
     {
-        "id": "kaiyukan",
-        "name": "海遊館",
-        "region": "関西",
-        "official_domains": ["kaiyukan.com"],
-        "urls": [
-            "https://www.kaiyukan.com/topics/",
-            "https://www.kaiyukan.com/",
-        ],
-        "query": "海遊館",
-        "is_jr": False,
-        "is_private": False,
-        "is_kintetsu": True,
-    },
-    {
-        "id": "kin-ei",
-        "name": "きんえい（アポロ・ルシアス）",
-        "region": "関西",
-        "official_domains": ["kin-ei.co.jp"],
-        "urls": [
-            "https://www.kin-ei.co.jp/news/",
-            "https://www.kin-ei.co.jp/",
-        ],
-        "query": "株式会社きんえい OR きんえい アポロ",
-        "is_jr": False,
-        "is_private": False,
-        "is_kintetsu": True,
-    },
-    {
         "id": "miyako-hotels",
         "name": "近鉄・都ホテルズ",
         "region": "関西・全国",
@@ -472,22 +473,8 @@ COMPANIES = [
         "is_kintetsu": True,
     },
     {
-        "id": "kwe",
-        "name": "近鉄エクスプレス",
-        "region": "関東・関西",
-        "official_domains": ["kwe.co.jp", "kwe.com"],
-        "urls": [
-            "https://www.kwe.co.jp/news/",
-            "https://www.kwe.co.jp/",
-        ],
-        "query": "近鉄エクスプレス",
-        "is_jr": False,
-        "is_private": False,
-        "is_kintetsu": True,
-    },
-    {
         "id": "knt-ct",
-        "name": "KNT-CTホールディングス（近畿日本ツーリスト等）",
+        "name": "KNT-CTホールディングス",
         "region": "関東・関西",
         "official_domains": ["kntcthd.co.jp", "knt.co.jp", "club-t.com"],
         "urls": [
@@ -500,15 +487,29 @@ COMPANIES = [
         "is_kintetsu": True,
     },
     {
-        "id": "nara-kotsu",
-        "name": "奈良交通",
+        "id": "kaiyukan",
+        "name": "海遊館",
         "region": "関西",
-        "official_domains": ["narakotsu.co.jp"],
+        "official_domains": ["kaiyukan.com"],
         "urls": [
-            "https://www.narakotsu.co.jp/news/",
-            "https://www.narakotsu.co.jp/",
+            "https://www.kaiyukan.com/topics/",
+            "https://www.kaiyukan.com/",
         ],
-        "query": "奈良交通",
+        "query": "海遊館",
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
+    },
+    {
+        "id": "shima-spain-village",
+        "name": "志摩スペイン村",
+        "region": "東海",
+        "official_domains": ["parque-net.com"],
+        "urls": [
+            "https://www.parque-net.com/news/",
+            "https://www.parque-net.com/",
+        ],
+        "query": "志摩スペイン村 OR パルケエスパーニャ",
         "is_jr": False,
         "is_private": False,
         "is_kintetsu": True,
@@ -528,15 +529,29 @@ COMPANIES = [
         "is_kintetsu": True,
     },
     {
+        "id": "nara-kotsu",
+        "name": "奈良交通",
+        "region": "関西",
+        "official_domains": ["narakotsu.co.jp"],
+        "urls": [
+            "https://www.narakotsu.co.jp/news/",
+            "https://www.narakotsu.co.jp/",
+        ],
+        "query": "奈良交通",
+        "is_jr": False,
+        "is_private": False,
+        "is_kintetsu": True,
+    },
+    {
         "id": "sanco-hd",
-        "name": "三重交通グループホールディングス（三重交通含む）",
+        "name": "三重交通（三交ホールディングス含む）",
         "region": "東海",
         "official_domains": ["holdings.sanco.co.jp", "sanco.co.jp"],
         "urls": [
             "https://holdings.sanco.co.jp/news/",
             "https://www.sanco.co.jp/",
         ],
-        "query": "三重交通グループホールディングス OR 三重交通",
+        "query": "三重交通 OR 三交ホールディングス",
         "is_jr": False,
         "is_private": False,
         "is_kintetsu": True,
@@ -912,24 +927,35 @@ def get_cached_railway_data(_companies_list):
 
 
 # ==========================================
-# 5. サイドバー操作パネル
+# 5. サイドバー操作パネル（「表示形式」配下に集約）
 # ==========================================
 today = datetime.date.today()
 default_start = today - datetime.timedelta(days=7)
 
 with st.sidebar:
-    st.header("⚙️ 絞り込み条件")
+    st.header("⚙️ 表示・絞り込み設定")
 
-    st.write("**1. 表示対象期間**")
+    # ★ご指示通り「表示形式」ヘッダーに変更
+    st.write("**1. 表示形式**")
+    
+    st.caption("▼ 対象期間")
     date_range = st.date_input(
-        "開始日と終了日を選択してください",
+        "開始日と終了日を選択",
         value=(default_start, today),
         max_value=today,
+        label_visibility="collapsed",
     )
     if len(date_range) == 2:
         start_date, end_date = date_range
     else:
         start_date = end_date = date_range[0]
+
+    st.caption("▼ 表示内容")
+    display_mode = st.radio(
+        "表示内容を選択",
+        ["見出し＋概要", "見出しのみ"],
+        label_visibility="collapsed",
+    )
 
     st.markdown("---")
     st.write("**2. 会社・種別の絞り込み**")
@@ -988,7 +1014,7 @@ else:
     ]
 
 # ==========================================
-# 7. ★タイトルのすぐ下：横長スリムなクイックジャンプ（JR / 私鉄 / 近鉄グループ）
+# 7. タイトルのすぐ下：横長スリムなクイックジャンプ（JR / 私鉄 / 近鉄グループ）
 # ==========================================
 st.markdown(
     """
@@ -998,7 +1024,7 @@ st.markdown(
         flex-direction: column;
         gap: 6px;
         margin-top: 8px;
-        margin-bottom: 22px;
+        margin-bottom: 24px;
         padding: 10px 14px;
         background-color: rgba(128, 128, 128, 0.05);
         border: 1px solid rgba(128, 128, 128, 0.18);
@@ -1044,7 +1070,6 @@ st.markdown(
         border-color: #0284c7;
         text-decoration: none;
     }
-    /* 記事内：掲載ページボタンのデザイン */
     .link-action-btn {
         display: inline-flex;
         align-items: center;
@@ -1116,7 +1141,7 @@ jump_html = f"""
 st.markdown(jump_html, unsafe_allow_html=True)
 
 # ==========================================
-# 8. 結果の描画（「掲載ページ」ボタン仕様）
+# 8. 結果の描画（タイトル並みの大きな会社名・表示内容切替）
 # ==========================================
 for group_title, comp_list in render_groups:
     st.write("<br>", unsafe_allow_html=True)
@@ -1155,11 +1180,16 @@ for group_title, comp_list in render_groups:
             display_items = official_items + general_items
 
         main_url = comp["urls"][0]
+
+        # ★ご指示通り、各社の会社名をタイトル並みに大きく目立つデザインに改修
         st.markdown(
-            f"<div id='{comp['id']}'></div>"
-            f"### 🏢 {comp['name']} <span style='font-size:0.8em;"
-            f" color:gray;'>（{comp['region']}）</span> [公式HP"
-            f" ↗]({main_url})",
+            f"""
+            <div id='{comp['id']}' style='margin-top: 36px; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 3px solid #0284c7; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px;'>
+                <span style='font-size: 1.85em; font-weight: 800; color: #1e293b; line-height: 1.2;'>🏢 {comp['name']}</span>
+                <span style='font-size: 1.05em; color: gray; font-weight: 500;'>（{comp['region']}）</span>
+                <a href='{main_url}' target='_blank' rel='noopener noreferrer' style='font-size: 0.9em; font-weight: 600; color: #0284c7; text-decoration: none;'>[公式HP ↗]</a>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 
@@ -1182,14 +1212,17 @@ for group_title, comp_list in render_groups:
                         st.markdown(file_badge)
                         st.caption(f"情報元: {item['source']}")
                     with col_right:
-                        # タイトル（クリックで開くことも可能）
+                        # タイトルリンク
                         st.markdown(
                             f"##### <a href='{item['url']}' target='_blank' rel='noopener noreferrer'>{item['title']}</a>",
                             unsafe_allow_html=True,
                         )
-                        st.write(f"**主な内容:** {item['summary']}")
 
-                        # ★URL文字列を表示させず、スマートな「掲載ページ」ボタンに変更
+                        # ★「見出し＋概要」選択時のみ概要テキストを表示
+                        if display_mode == "見出し＋概要":
+                            st.write(f"**主な内容:** {item['summary']}")
+
+                        # 掲載ページボタン
                         st.markdown(
                             f"<a href='{item['url']}' target='_blank' rel='noopener noreferrer' class='link-action-btn'>🔗 {btn_caption}</a>",
                             unsafe_allow_html=True,
