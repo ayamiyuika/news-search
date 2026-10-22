@@ -1155,4 +1155,200 @@ st.markdown(
         font-size: 1.15em;
         line-height: 1.3;
     }
-    .label-jr { color: #0284c7
+    .label-jr { color: #0284c7; }
+    .label-private { color: #10b981; }
+    .label-kintetsu { color: #f59e0b; }
+    .slim-btn-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        flex-grow: 1;
+    }
+    .slim-btn {
+        display: inline-block;
+        padding: 3px 10px;
+        background-color: var(--secondary-background-color, #ffffff);
+        color: var(--text-color, #1f2937);
+        text-decoration: none;
+        border-radius: 12px;
+        border: 1px solid rgba(128, 128, 128, 0.25);
+        font-size: 0.78em;
+        font-weight: 500;
+        line-height: 1.5;
+        transition: all 0.15s ease;
+    }
+    .slim-btn:hover {
+        background-color: #0284c7;
+        color: #ffffff !important;
+        border-color: #0284c7;
+        text-decoration: none;
+    }
+    .link-action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 6px;
+        padding: 4px 12px;
+        background-color: rgba(2, 132, 199, 0.08);
+        color: #0284c7 !important;
+        border: 1px solid rgba(2, 132, 199, 0.35);
+        border-radius: 6px;
+        font-size: 0.82em;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.15s ease;
+    }
+    .link-action-btn:hover {
+        background-color: #0284c7;
+        color: #ffffff !important;
+        border-color: #0284c7;
+        text-decoration: none;
+    }
+    @media (max-width: 768px) {
+        .slim-jump-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+        }
+        .slim-label {
+            width: auto;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+jr_buttons = [c for c in COMPANIES if c["is_jr"]] if selected_category in ["すべて", "JR"] else []
+private_buttons = [c for c in COMPANIES if c["is_private"]] if selected_category in ["すべて", "私鉄"] else []
+kintetsu_buttons = [c for c in COMPANIES if c["is_kintetsu"]] if selected_category in ["すべて", "近鉄グループ"] else []
+
+def make_slim_btn_html(comp_list):
+    if not comp_list:
+        return "<span style='font-size:0.75em; color:gray;'>（選択対象外）</span>"
+    return "".join([f"<a href='#{c['id']}' class='slim-btn'>{c['name']}</a>" for c in comp_list])
+
+jump_html = f"""
+<div class="slim-jump-container">
+  <div class="slim-jump-row">
+    <div class="slim-label label-jr">🚆 JR</div>
+    <div class="slim-btn-wrapper">
+      {make_slim_btn_html(jr_buttons)}
+    </div>
+  </div>
+  <div class="slim-jump-row">
+    <div class="slim-label label-private">🚇 私鉄</div>
+    <div class="slim-btn-wrapper">
+      {make_slim_btn_html(private_buttons)}
+    </div>
+  </div>
+  <div class="slim-jump-row">
+    <div class="slim-label label-kintetsu">🏢 近鉄グループ</div>
+    <div class="slim-btn-wrapper">
+      {make_slim_btn_html(kintetsu_buttons)}
+    </div>
+  </div>
+</div>
+"""
+
+st.markdown(jump_html, unsafe_allow_html=True)
+
+# ==========================================
+# 8. 結果の描画（実際のメディア名表示・JR西日本PDF分離対応）
+# ==========================================
+for group_title, comp_list in render_groups:
+    st.write("<br>", unsafe_allow_html=True)
+    st.markdown(f"## 【 {group_title} 】")
+    st.divider()
+
+    for comp in comp_list:
+        raw_items = all_cached_data.get(comp["name"], [])
+
+        period_items = [
+            item for item in raw_items
+            if start_date <= item["date"] <= end_date
+        ]
+
+        if search_keyword:
+            kw = search_keyword.lower()
+            period_items = [
+                item
+                for item in period_items
+                if kw in item["title"].lower()
+                or kw in item["summary"].lower()
+                or kw in comp["name"].lower()
+            ]
+
+        official_items = [i for i in period_items if i["type"] == "公式発表"]
+        general_items = [i for i in period_items if i["type"] == "ニュース（一般サイト）"]
+
+        official_items.sort(key=lambda x: x["date"], reverse=True)
+        general_items.sort(key=lambda x: x["date"], reverse=True)
+
+        if selected_type == "公式発表":
+            display_items = official_items
+        elif selected_type == "ニュース（一般サイト）":
+            display_items = general_items
+        else:
+            display_items = official_items + general_items
+
+        main_url = comp["urls"][0]
+
+        st.markdown(
+            f"""
+            <div id='{comp['id']}' style='margin-top: 36px; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 3px solid #0284c7; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px;'>
+                <span style='font-size: 1.85em; font-weight: 800; color: #1e293b; line-height: 1.2;'>🏢 {comp['name']}</span>
+                <span style='font-size: 1.05em; color: gray; font-weight: 500;'>（{comp['region']}）</span>
+                <a href='{main_url}' target='_blank' rel='noopener noreferrer' style='font-size: 0.9em; font-weight: 600; color: #0284c7; text-decoration: none;'>[公式HP ↗]</a>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        if not display_items:
+            type_label = f"（{selected_type}）" if selected_type != "すべて" else ""
+            st.info(f"📅 指定期間・条件内の発表{type_label}は **なし** です。")
+            st.write("")
+        else:
+            for item in display_items:
+                is_official = item["type"] == "公式発表"
+                type_badge = "📢 **公式発表**" if is_official else "📰 **ニュース（一般サイト）**"
+
+                if comp["name"] == "JR西日本":
+                    title_link = item["url"]
+                    action_link = item.get("pdf_url") or item["url"]
+                    action_caption = "掲載資料（PDF）を開く ↗"
+                    file_badge = "🟥 **[PDF資料]**"
+                else:
+                    title_link = item["url"]
+                    action_link = item.get("pdf_url") or item["url"]
+                    action_caption = "掲載資料（PDF）を開く ↗" if item["is_pdf"] else "掲載ページを開く ↗"
+                    file_badge = "🟥 **[PDF資料]**" if item["is_pdf"] else "🌐 **[Web発表]**"
+
+                with st.container(border=True):
+                    col_left, col_right = st.columns([1, 4])
+                    with col_left:
+                        st.write(f"📅 **{item['date']}**")
+                        st.markdown(type_badge)
+                        st.markdown(file_badge)
+                        st.caption(f"情報元: {item['source']}")
+                    with col_right:
+                        st.markdown(
+                            f"##### <a href='{title_link}' target='_blank' rel='noopener noreferrer'>{item['title']}</a>",
+                            unsafe_allow_html=True,
+                        )
+
+                        if display_mode == "見出し＋概要":
+                            st.write(f"**主な内容:** {item['summary']}")
+
+                        st.markdown(
+                            f"<a href='{action_link}' target='_blank' rel='noopener noreferrer' class='link-action-btn'>🔗 {action_caption}</a>",
+                            unsafe_allow_html=True,
+                        )
+            st.write("")
+
+# フッター免責事項
+st.write("---")
+st.caption(
+    "© 鉄道広報・ニュース概要 | 本アプリは各社公式ホームページおよび報道ニュースを巡回・整理して提供しています。リンク先コンテンツの著作権は各社に帰属します。"
+)
