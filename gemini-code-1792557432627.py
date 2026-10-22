@@ -27,7 +27,7 @@ st.caption(
 # 1. 鉄道会社・持株会社・近鉄グループ各社のマスターデータ
 # ==========================================
 COMPANIES = [
-    # --- JR（東から西順） ---
+    # --- JR ---
     {
         "id": "jr-hokkaido",
         "name": "JR北海道",
@@ -112,7 +112,7 @@ COMPANIES = [
         "is_private": False,
         "is_kintetsu": False,
     },
-    # --- 私鉄（東から西順：近畿日本鉄道を含む） ---
+    # --- 私鉄（近畿日本鉄道を含む） ---
     {
         "id": "tobu",
         "name": "東武鉄道",
@@ -359,7 +359,7 @@ COMPANIES = [
         "is_private": True,
         "is_kintetsu": False,
     },
-    # --- 近鉄グループ（ご指定順に完全準拠） ---
+    # --- 近鉄グループ（ご指定順） ---
     {
         "id": "kintetsu-ghd",
         "name": "近鉄GHD",
@@ -382,7 +382,8 @@ COMPANIES = [
         "official_domains": ["kintetsu-re.co.jp"],
         "urls": [
             "https://www.kintetsu-re.co.jp/news/",
-            "https://www.kintetsu-re.co.jp/",
+            "https://www.kintetsu-re.co.jp/corporate/news/",
+            "https://www.kintetsu-re.co.jp/corporate/",
         ],
         "query": "近鉄不動産",
         "is_jr": False,
@@ -395,6 +396,8 @@ COMPANIES = [
         "region": "関西",
         "official_domains": ["aham.jp"],
         "urls": [
+            "https://www.aham.jp/news/",
+            "https://www.aham.jp/information/",
             "https://www.aham.jp/",
         ],
         "query": "あべのハルカス美術館",
@@ -464,6 +467,7 @@ COMPANIES = [
         "region": "関西・全国",
         "official_domains": ["miyakohotels.ne.jp"],
         "urls": [
+            "https://www.miyakohotels.ne.jp/newsrelease/",
             "https://www.miyakohotels.ne.jp/information/",
             "https://www.miyakohotels.ne.jp/",
         ],
@@ -730,6 +734,7 @@ def fetch_official_releases(company_info, max_days_back=21):
                                 "title": t,
                                 "summary": t,
                                 "url": l,
+                                "pdf_url": l if l.lower().endswith(".pdf") else None,
                                 "source": company_info["name"] + " 公式HP",
                                 "is_pdf": l.lower().endswith(".pdf"),
                             })
@@ -803,18 +808,43 @@ def fetch_official_releases(company_info, max_days_back=21):
                 if len(clean_t) < 5 or clean_t in GENERIC_LINK_TEXTS:
                     continue
 
+                # 周辺にあるPDFリンクの探索
+                pdf_m = re.search(r'href=["\']([^"\']+\.pdf)["\']', surrounding, re.IGNORECASE)
+                detected_pdf = urllib.parse.urljoin(final_base_url, pdf_m.group(1).strip()) if pdf_m else None
+
+                page_url = full_url
+                pdf_url = detected_pdf
+
+                if full_url.lower().endswith(".pdf"):
+                    pdf_url = full_url
+                    # 周辺から記事ページ（HTML）を探す
+                    page_m = re.search(r'href=["\']([^"\']*(?:page_|article/)[^"\']*\.html)["\']', surrounding, re.IGNORECASE)
+                    if page_m:
+                        page_url = urllib.parse.urljoin(final_base_url, page_m.group(1).strip())
+
+                # JR西日本でHTMLページ内にPDFリンクがある場合の取得補完
+                if company_info["name"] == "JR西日本" and not pdf_url and page_url.endswith(".html"):
+                    try:
+                        sub_req = urllib.request.Request(page_url, headers=headers)
+                        with urllib.request.urlopen(sub_req, context=ctx, timeout=3) as sub_res:
+                            sub_b = sub_res.read()
+                            sub_h = decode_html_bytes(sub_b, url=page_url)
+                            inner_pdf_m = re.search(r'href=["\']([^"\']+\.pdf)["\']', sub_h, re.IGNORECASE)
+                            if inner_pdf_m:
+                                pdf_url = urllib.parse.urljoin(page_url, inner_pdf_m.group(1).strip())
+                    except Exception:
+                        pass
+
                 seen_urls.add(full_url)
-                is_pdf = bool(
-                    re.search(r"\.pdf$", full_url, re.IGNORECASE)
-                    or "pdf" in surrounding.lower()
-                )
+                is_pdf = bool(pdf_url or full_url.lower().endswith(".pdf") or "pdf" in surrounding.lower())
 
                 results.append({
                     "date": found_date,
                     "type": "公式発表",
                     "title": clean_t[:130],
                     "summary": clean_t,
-                    "url": full_url,
+                    "url": page_url,
+                    "pdf_url": pdf_url,
                     "source": company_info["name"] + " 公式HP",
                     "is_pdf": is_pdf,
                 })
@@ -894,6 +924,7 @@ def fetch_general_news(query, max_days_back=21):
                 "title": clean_title,
                 "summary": summary[:140] + ("..." if len(summary) > 140 else ""),
                 "url": link,
+                "pdf_url": link if link.lower().endswith(".pdf") else None,
                 "source": domain,
                 "is_pdf": link.lower().endswith(".pdf"),
             })
@@ -927,7 +958,7 @@ def get_cached_railway_data(_companies_list):
 
 
 # ==========================================
-# 5. サイドバー操作パネル（「表示形式」配下に集約）
+# 5. サイドバー操作パネル（「表示形式」配下）
 # ==========================================
 today = datetime.date.today()
 default_start = today - datetime.timedelta(days=7)
@@ -935,7 +966,6 @@ default_start = today - datetime.timedelta(days=7)
 with st.sidebar:
     st.header("⚙️ 表示・絞り込み設定")
 
-    # ★ご指示通り「表示形式」ヘッダーに変更
     st.write("**1. 表示形式**")
     
     st.caption("▼ 対象期間")
@@ -1006,7 +1036,6 @@ elif selected_category == "私鉄":
 elif selected_category == "近鉄グループ":
     render_groups = [("近鉄グループ", [c for c in COMPANIES if c["is_kintetsu"]])]
 else:
-    # すべて
     render_groups = [
         ("JR", [c for c in COMPANIES if c["is_jr"]]),
         ("私鉄", [c for c in COMPANIES if c["is_private"]]),
@@ -1014,7 +1043,7 @@ else:
     ]
 
 # ==========================================
-# 7. タイトルのすぐ下：横長スリムなクイックジャンプ（JR / 私鉄 / 近鉄グループ）
+# 7. タイトルのすぐ下：見出し文字を大きくしたクイックジャンプ
 # ==========================================
 st.markdown(
     """
@@ -1022,10 +1051,10 @@ st.markdown(
     .slim-jump-container {
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 8px;
         margin-top: 8px;
         margin-bottom: 24px;
-        padding: 10px 14px;
+        padding: 12px 16px;
         background-color: rgba(128, 128, 128, 0.05);
         border: 1px solid rgba(128, 128, 128, 0.18);
         border-radius: 8px;
@@ -1033,14 +1062,16 @@ st.markdown(
     .slim-jump-row {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
         padding: 2px 0;
     }
+    /* ★ボタン見出しの文字サイズを大きく調整 */
     .slim-label {
         flex-shrink: 0;
-        width: 100px;
-        font-weight: 700;
-        font-size: 0.82em;
+        width: 140px;
+        font-weight: 800;
+        font-size: 1.15em;
+        line-height: 1.3;
     }
     .label-jr { color: #0284c7; }
     .label-private { color: #10b981; }
@@ -1053,13 +1084,13 @@ st.markdown(
     }
     .slim-btn {
         display: inline-block;
-        padding: 2px 9px;
+        padding: 3px 10px;
         background-color: var(--secondary-background-color, #ffffff);
         color: var(--text-color, #1f2937);
         text-decoration: none;
         border-radius: 12px;
         border: 1px solid rgba(128, 128, 128, 0.25);
-        font-size: 0.76em;
+        font-size: 0.78em;
         font-weight: 500;
         line-height: 1.5;
         transition: all 0.15s ease;
@@ -1141,11 +1172,12 @@ jump_html = f"""
 st.markdown(jump_html, unsafe_allow_html=True)
 
 # ==========================================
-# 8. 結果の描画（タイトル並みの大きな会社名・表示内容切替）
+# 8. 結果の描画（「（東から西順）」削除・JR西日本PDF分離対応）
 # ==========================================
 for group_title, comp_list in render_groups:
     st.write("<br>", unsafe_allow_html=True)
-    st.markdown(f"## 【 {group_title} 】（東から西順）")
+    # ★「（東から西順）」を削除し、「【 JR 】」等に修正
+    st.markdown(f"## 【 {group_title} 】")
     st.divider()
 
     for comp in comp_list:
@@ -1181,7 +1213,7 @@ for group_title, comp_list in render_groups:
 
         main_url = comp["urls"][0]
 
-        # ★ご指示通り、各社の会社名をタイトル並みに大きく目立つデザインに改修
+        # 会社名ヘッダー
         st.markdown(
             f"""
             <div id='{comp['id']}' style='margin-top: 36px; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 3px solid #0284c7; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px;'>
@@ -1201,8 +1233,20 @@ for group_title, comp_list in render_groups:
             for item in display_items:
                 is_official = item["type"] == "公式発表"
                 type_badge = "📢 **公式発表**" if is_official else "📰 **ニュース（一般サイト）**"
-                file_badge = "🟥 **[PDF資料]**" if item["is_pdf"] else "🌐 **[Web発表]**"
-                btn_caption = "掲載資料（PDF）を開く ↗" if item["is_pdf"] else "掲載ページを開く ↗"
+
+                # ★ JR西日本の専用リンク制御
+                if comp["name"] == "JR西日本":
+                    # タイトルクリックで掲載ページ（Webページ）
+                    title_link = item["url"]
+                    # 下のボタンは「掲載資料（PDF）を開く」でPDFへ（PDFが無い場合はWebページ）
+                    action_link = item.get("pdf_url") or item["url"]
+                    action_caption = "掲載資料（PDF）を開く ↗"
+                    file_badge = "🟥 **[PDF資料]**"
+                else:
+                    title_link = item["url"]
+                    action_link = item.get("pdf_url") or item["url"]
+                    action_caption = "掲載資料（PDF）を開く ↗" if item["is_pdf"] else "掲載ページを開く ↗"
+                    file_badge = "🟥 **[PDF資料]**" if item["is_pdf"] else "🌐 **[Web発表]**"
 
                 with st.container(border=True):
                     col_left, col_right = st.columns([1, 4])
@@ -1212,19 +1256,19 @@ for group_title, comp_list in render_groups:
                         st.markdown(file_badge)
                         st.caption(f"情報元: {item['source']}")
                     with col_right:
-                        # タイトルリンク
+                        # タイトルリンク（掲載ページへ飛ぶ）
                         st.markdown(
-                            f"##### <a href='{item['url']}' target='_blank' rel='noopener noreferrer'>{item['title']}</a>",
+                            f"##### <a href='{title_link}' target='_blank' rel='noopener noreferrer'>{item['title']}</a>",
                             unsafe_allow_html=True,
                         )
 
-                        # ★「見出し＋概要」選択時のみ概要テキストを表示
+                        # 「見出し＋概要」選択時のみ概要テキストを表示
                         if display_mode == "見出し＋概要":
                             st.write(f"**主な内容:** {item['summary']}")
 
-                        # 掲載ページボタン
+                        # 掲載ボタン
                         st.markdown(
-                            f"<a href='{item['url']}' target='_blank' rel='noopener noreferrer' class='link-action-btn'>🔗 {btn_caption}</a>",
+                            f"<a href='{action_link}' target='_blank' rel='noopener noreferrer' class='link-action-btn'>🔗 {action_caption}</a>",
                             unsafe_allow_html=True,
                         )
             st.write("")
