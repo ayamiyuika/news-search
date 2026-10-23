@@ -31,8 +31,10 @@ if "hidden_companies" not in st.session_state:
     st.session_state.hidden_companies = set()
 if "selected_filter_companies" not in st.session_state:
     st.session_state.selected_filter_companies = set()
-if "selected_type" not in st.session_state:
-    st.session_state.selected_type = "すべて"
+if "show_official" not in st.session_state:
+    st.session_state.show_official = True
+if "show_news" not in st.session_state:
+    st.session_state.show_news = True
 
 # ==========================================
 # 0. クエリパラメータ（一括選択・解除）の処理
@@ -1036,25 +1038,28 @@ st.markdown(
         border-color: #172554 !important;
         color: #ffffff !important;
     }
+    /* secondary ボタン（非選択時・灰色背景） */
     button[kind="secondary"],
     button[data-testid="baseButton-secondary"],
-    div[data-testid="stButton"] button[kind="secondary"] {
-        background-color: #ffffff !important;
-        color: #334155 !important;
+    div[data-testid="stButton"] button[kind="secondary"],
+    section[data-testid="stSidebar"] button[kind="secondary"] {
+        background-color: #f1f5f9 !important;
+        color: #64748b !important;
         border: 1px solid #cbd5e1 !important;
         font-weight: 500 !important;
     }
     button[kind="secondary"]:hover,
     button[data-testid="baseButton-secondary"]:hover,
-    div[data-testid="stButton"] button[kind="secondary"]:hover {
-        background-color: #f8fafc !important;
-        color: #1e3a8a !important;
-        border-color: #1e3a8a !important;
+    div[data-testid="stButton"] button[kind="secondary"]:hover,
+    section[data-testid="stSidebar"] button[kind="secondary"]:hover {
+        background-color: #e2e8f0 !important;
+        color: #1e293b !important;
+        border-color: #94a3b8 !important;
     }
     /* サイドバーのコンパクトボタンスタイル */
     section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] button {
-        padding: 4px 6px !important;
-        font-size: 0.82em !important;
+        padding: 5px 8px !important;
+        font-size: 0.86em !important;
         white-space: nowrap !important;
     }
     input[type="radio"] {
@@ -1066,7 +1071,7 @@ st.markdown(
 )
 
 # ==========================================
-# 6. サイドバー操作パネル（種別をボタンスタイルに刷新）
+# 6. サイドバー操作パネル（横並び2ボタン化）
 # ==========================================
 today = datetime.datetime.now(JST).date()
 
@@ -1119,25 +1124,28 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-    # ★ 「すべて」「公式発表」「ニュース（一般）」を連動ボタンスタイルに刷新
-    st.write("**2. 公式発表・ニュース（一般）**")
-    t_val = st.session_state.selected_type
-    t_btn_all = "primary" if t_val == "すべて" else "secondary"
-    t_btn_off = "primary" if t_val == "公式発表" else "secondary"
-    t_btn_gen = "primary" if t_val in ["ニュース（一般）", "ニュース（一般サイト）"] else "secondary"
+    # ★ 見出しを「2. 公式発表・ニュース」に変更し、横並び2つの連動トグルボタン化
+    st.write("**2. 公式発表・ニュース**")
 
-    tc1, tc2, tc3 = st.columns(3)
-    with tc1:
-        if st.button("すべて", key="btn_type_all", type=t_btn_all, use_container_width=True):
-            st.session_state.selected_type = "すべて"
+    btn_type_off = "primary" if st.session_state.show_official else "secondary"
+    btn_type_news = "primary" if st.session_state.show_news else "secondary"
+
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        if st.button("公式発表", key="btn_toggle_official", type=btn_type_off, use_container_width=True):
+            st.session_state.show_official = not st.session_state.show_official
+            # 両方オフになった場合は全オンに戻す
+            if not st.session_state.show_official and not st.session_state.show_news:
+                st.session_state.show_official = True
+                st.session_state.show_news = True
             st.rerun()
-    with tc2:
-        if st.button("公式発表", key="btn_type_off", type=t_btn_off, use_container_width=True):
-            st.session_state.selected_type = "公式発表"
-            st.rerun()
-    with tc3:
-        if st.button("ニュース(一般)", key="btn_type_gen", type=t_btn_gen, use_container_width=True):
-            st.session_state.selected_type = "ニュース（一般）"
+    with col_t2:
+        if st.button("ニュース", key="btn_toggle_news", type=btn_type_news, use_container_width=True):
+            st.session_state.show_news = not st.session_state.show_news
+            # 両方オフになった場合は全オンに戻す
+            if not st.session_state.show_official and not st.session_state.show_news:
+                st.session_state.show_official = True
+                st.session_state.show_news = True
             st.rerun()
 
     st.markdown("---")
@@ -1228,7 +1236,7 @@ st.markdown(
         gap: 12px;
         padding: 2px 0;
     }
-    /* ★ 「近鉄グループ」などの文字を絶対に改行させず1行で表示 */
+    /* 「近鉄グループ」などの文字を絶対に改行させず1行で表示 */
     .slim-label {
         flex-shrink: 0;
         width: auto !important;
@@ -1390,7 +1398,6 @@ def make_chk_btn_html(comp_list, prefix, selected_set):
 sel_set = st.session_state.selected_filter_companies
 has_filter = len(sel_set) > 0
 
-# ★ 1行表示された近鉄グループラベル ＆ 確定・解除フォーム
 jump_form_html = f"""
 <form method="GET" action="" id="company-filter-form">
   <input type="hidden" name="submitted" value="1">
@@ -1426,7 +1433,6 @@ jump_form_html = f"""
 
 st.markdown(jump_form_html, unsafe_allow_html=True)
 
-# グループ文字クリック一括トグルスクリプト
 components.html(
     """
     <script>
@@ -1492,9 +1498,10 @@ components.html(
 )
 
 # ==========================================
-# 9. 結果の描画（選択された会社のみ記事表示／他社は会社名のみ）
+# 9. 結果の描画（「公式発表」「ニュース」の連動表示）
 # ==========================================
-selected_type = st.session_state.selected_type
+show_official = st.session_state.show_official
+show_news = st.session_state.show_news
 
 for group_prefix, group_title, comp_list in render_groups:
     st.write("<br>", unsafe_allow_html=True)
@@ -1516,12 +1523,11 @@ for group_prefix, group_title, comp_list in render_groups:
         official_items.sort(key=lambda x: x["date"], reverse=True)
         general_items.sort(key=lambda x: x["date"], reverse=True)
 
-        if selected_type == "公式発表":
-            display_items = official_items
-        elif selected_type in ["ニュース（一般）", "ニュース（一般サイト）"]:
-            display_items = general_items
-        else:
-            display_items = official_items + general_items
+        display_items = []
+        if show_official:
+            display_items.extend(official_items)
+        if show_news:
+            display_items.extend(general_items)
 
         main_url = comp["urls"][0]
         anchor_id = f"{group_prefix}-{comp['id']}"
@@ -1562,7 +1568,13 @@ for group_prefix, group_title, comp_list in render_groups:
             continue
 
         if not display_items:
-            type_label = f"（{selected_type}）" if selected_type != "すべて" else ""
+            type_labels = []
+            if show_official:
+                type_labels.append("公式発表")
+            if show_news:
+                type_labels.append("ニュース")
+            t_str = "・".join(type_labels) if len(type_labels) < 2 else ""
+            type_label = f"（{t_str}）" if t_str else ""
             st.info(f"📅 指定期間・条件内の発表{type_label}は **なし** です。")
             st.write("")
         else:
