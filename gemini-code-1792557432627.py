@@ -11,6 +11,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import zlib
 import streamlit as st
+import streamlit.components.v1 as components
 
 # 日本標準時（JST）の定義
 JST = datetime.timezone(datetime.timedelta(hours=9))
@@ -30,6 +31,8 @@ if "hidden_companies" not in st.session_state:
     st.session_state.hidden_companies = set()
 if "selected_filter_companies" not in st.session_state:
     st.session_state.selected_filter_companies = set()
+if "selected_type" not in st.session_state:
+    st.session_state.selected_type = "すべて"
 
 # ==========================================
 # 0. クエリパラメータ（一括選択・解除）の処理
@@ -1017,7 +1020,6 @@ def get_single_company_data(company_dict, max_days_back=21):
 st.markdown(
     """
     <style>
-    /* アプリ全体の primary ボタン（記事を表示、データ更新、3日間/7日間選択時など）を濃紺に統一 */
     button[kind="primary"],
     button[data-testid="baseButton-primary"],
     div[data-testid="stButton"] button[kind="primary"] {
@@ -1034,7 +1036,6 @@ st.markdown(
         border-color: #172554 !important;
         color: #ffffff !important;
     }
-    /* secondary ボタン（記事を非表示、未選択時など） */
     button[kind="secondary"],
     button[data-testid="baseButton-secondary"],
     div[data-testid="stButton"] button[kind="secondary"] {
@@ -1050,7 +1051,12 @@ st.markdown(
         color: #1e3a8a !important;
         border-color: #1e3a8a !important;
     }
-    /* ラジオボタンなどのアクセントカラーも紺色に統一 */
+    /* サイドバーのコンパクトボタンスタイル */
+    section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] button {
+        padding: 4px 6px !important;
+        font-size: 0.82em !important;
+        white-space: nowrap !important;
+    }
     input[type="radio"] {
         accent-color: #1e3a8a !important;
     }
@@ -1060,7 +1066,7 @@ st.markdown(
 )
 
 # ==========================================
-# 6. サイドバー操作パネル（「2. 分類」を削除・整理）
+# 6. サイドバー操作パネル（種別をボタンスタイルに刷新）
 # ==========================================
 today = datetime.datetime.now(JST).date()
 
@@ -1113,12 +1119,26 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
+    # ★ 「すべて」「公式発表」「ニュース（一般）」を連動ボタンスタイルに刷新
     st.write("**2. 公式発表・ニュース（一般）**")
-    selected_type = st.radio(
-        "表示種別",
-        ["すべて", "公式発表", "ニュース（一般サイト）"],
-        label_visibility="collapsed",
-    )
+    t_val = st.session_state.selected_type
+    t_btn_all = "primary" if t_val == "すべて" else "secondary"
+    t_btn_off = "primary" if t_val == "公式発表" else "secondary"
+    t_btn_gen = "primary" if t_val in ["ニュース（一般）", "ニュース（一般サイト）"] else "secondary"
+
+    tc1, tc2, tc3 = st.columns(3)
+    with tc1:
+        if st.button("すべて", key="btn_type_all", type=t_btn_all, use_container_width=True):
+            st.session_state.selected_type = "すべて"
+            st.rerun()
+    with tc2:
+        if st.button("公式発表", key="btn_type_off", type=t_btn_off, use_container_width=True):
+            st.session_state.selected_type = "公式発表"
+            st.rerun()
+    with tc3:
+        if st.button("ニュース(一般)", key="btn_type_gen", type=t_btn_gen, use_container_width=True):
+            st.session_state.selected_type = "ニュース（一般）"
+            st.rerun()
 
     st.markdown("---")
     st.write("**3. データ更新**")
@@ -1208,22 +1228,25 @@ st.markdown(
         gap: 12px;
         padding: 2px 0;
     }
-    /* ★ 文字を押せば一括選択できるようにポインターとホバー演出を追加 */
+    /* ★ 「近鉄グループ」などの文字を絶対に改行させず1行で表示 */
     .slim-label {
         flex-shrink: 0;
-        width: 150px;
+        width: auto !important;
+        min-width: 165px;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
         font-weight: 800;
         font-size: 1.15em;
         line-height: 1.3;
-        cursor: pointer;
+        cursor: pointer !important;
         user-select: none;
-        padding: 3px 6px;
+        padding: 4px 8px;
         border-radius: 6px;
         transition: all 0.15s ease;
     }
     .slim-label:hover {
-        background-color: rgba(30, 58, 138, 0.1);
-        text-decoration: underline;
+        background-color: rgba(30, 58, 138, 0.12);
+        transform: translateY(-1px);
     }
     .label-jr { color: #0284c7; }
     .label-private { color: #10b981; }
@@ -1234,11 +1257,9 @@ st.markdown(
         gap: 5px;
         flex-grow: 1;
     }
-    /* チェックボックス本体は非表示 */
     .comp-chk {
         display: none !important;
     }
-    /* 未選択時の会社ボタン（白地・グレー枠） */
     .comp-label {
         display: inline-block;
         padding: 3px 10px;
@@ -1258,7 +1279,6 @@ st.markdown(
         border-color: #1e3a8a;
         color: #1e3a8a;
     }
-    /* ★ 選択された会社ボタン（複数選択可能・濃紺 #1e3a8a・白文字） */
     .comp-chk:checked + .comp-label {
         background-color: #1e3a8a !important;
         color: #ffffff !important;
@@ -1266,7 +1286,6 @@ st.markdown(
         font-weight: 700 !important;
         box-shadow: 0 1px 3px rgba(30, 58, 138, 0.35) !important;
     }
-    /* 確定・解除のボタンスタイル */
     .filter-action-bar {
         display: flex;
         align-items: center;
@@ -1341,7 +1360,9 @@ st.markdown(
             gap: 4px;
         }
         .slim-label {
-            width: auto;
+            width: auto !important;
+            min-width: unset;
+            white-space: nowrap !important;
         }
         .filter-action-bar {
             flex-direction: column;
@@ -1369,7 +1390,7 @@ def make_chk_btn_html(comp_list, prefix, selected_set):
 sel_set = st.session_state.selected_filter_companies
 has_filter = len(sel_set) > 0
 
-# ★ 案内文の変更 ＆ 文字クリック一括トグル（onclick）を実装
+# ★ 1行表示された近鉄グループラベル ＆ 確定・解除フォーム
 jump_form_html = f"""
 <form method="GET" action="" id="company-filter-form">
   <input type="hidden" name="submitted" value="1">
@@ -1378,19 +1399,19 @@ jump_form_html = f"""
   </div>
   <div class="slim-jump-container">
     <div class="slim-jump-row">
-      <div class="slim-label label-jr" onclick="(function(){{var c=document.querySelectorAll('input[id^=\\'chk-jr-\\']');var a=true;c.forEach(function(x){{if(!x.checked)a=false;}});c.forEach(function(x){{x.checked=!a;}});}})()" title="クリックでJR各社を一括選択/解除">🚆 JR</div>
+      <div class="slim-label label-jr" id="toggle-btn-jr" title="クリックでJR各社を一括選択/解除">🚆 JR</div>
       <div class="slim-btn-wrapper">
         {make_chk_btn_html(jr_list, 'jr', sel_set)}
       </div>
     </div>
     <div class="slim-jump-row">
-      <div class="slim-label label-private" onclick="(function(){{var c=document.querySelectorAll('input[id^=\\'chk-private-\\']');var a=true;c.forEach(function(x){{if(!x.checked)a=false;}});c.forEach(function(x){{x.checked=!a;}});}})()" title="クリックで私鉄各社を一括選択/解除">🚇 私鉄</div>
+      <div class="slim-label label-private" id="toggle-btn-private" title="クリックで私鉄各社を一括選択/解除">🚇 私鉄</div>
       <div class="slim-btn-wrapper">
         {make_chk_btn_html(private_list, 'private', sel_set)}
       </div>
     </div>
     <div class="slim-jump-row">
-      <div class="slim-label label-kintetsu" onclick="(function(){{var c=document.querySelectorAll('input[id^=\\'chk-kintetsu-\\']');var a=true;c.forEach(function(x){{if(!x.checked)a=false;}});c.forEach(function(x){{x.checked=!a;}});}})()" title="クリックで近鉄グループ各社を一括選択/解除">🏢 近鉄グループ</div>
+      <div class="slim-label label-kintetsu" id="toggle-btn-kintetsu" title="クリックで近鉄グループ各社を一括選択/解除">🏢 近鉄グループ</div>
       <div class="slim-btn-wrapper">
         {make_chk_btn_html(kintetsu_list, 'kintetsu', sel_set)}
       </div>
@@ -1405,9 +1426,76 @@ jump_form_html = f"""
 
 st.markdown(jump_form_html, unsafe_allow_html=True)
 
+# グループ文字クリック一括トグルスクリプト
+components.html(
+    """
+    <script>
+    (function() {
+        function setupGroupToggles() {
+            const doc = window.parent.document;
+            if (!doc) return;
+
+            const groups = [
+                { id: 'toggle-btn-jr', prefix: 'chk-jr-' },
+                { id: 'toggle-btn-private', prefix: 'chk-private-' },
+                { id: 'toggle-btn-kintetsu', prefix: 'chk-kintetsu-' }
+            ];
+
+            groups.forEach(function(g) {
+                const el = doc.getElementById(g.id);
+                if (!el) return;
+                if (el.dataset.toggleBound === 'true') return;
+                el.dataset.toggleBound = 'true';
+
+                el.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const inputs = doc.querySelectorAll('input[id^="' + g.prefix + '"]');
+                    if (!inputs || inputs.length === 0) return;
+
+                    let allChecked = true;
+                    inputs.forEach(function(inp) {
+                        if (!inp.checked) allChecked = false;
+                    });
+
+                    const newChecked = !allChecked;
+                    inputs.forEach(function(inp) {
+                        inp.checked = newChecked;
+                        inp.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                });
+            });
+        }
+
+        setupGroupToggles();
+        let count = 0;
+        const timer = setInterval(function() {
+            setupGroupToggles();
+            count++;
+            if (count > 25) clearInterval(timer);
+        }, 200);
+
+        try {
+            const observer = new MutationObserver(function() {
+                setupGroupToggles();
+            });
+            if (window.parent && window.parent.document && window.parent.document.body) {
+                observer.observe(window.parent.document.body, { childList: true, subtree: true });
+            }
+        } catch(err) {}
+    })();
+    </script>
+    """,
+    height=0,
+    width=0,
+)
+
 # ==========================================
 # 9. 結果の描画（選択された会社のみ記事表示／他社は会社名のみ）
 # ==========================================
+selected_type = st.session_state.selected_type
+
 for group_prefix, group_title, comp_list in render_groups:
     st.write("<br>", unsafe_allow_html=True)
     st.markdown(f"<div id='sec-{group_prefix}' style='scroll-margin-top: 15px;'></div>", unsafe_allow_html=True)
@@ -1430,7 +1518,7 @@ for group_prefix, group_title, comp_list in render_groups:
 
         if selected_type == "公式発表":
             display_items = official_items
-        elif selected_type == "ニュース（一般サイト）":
+        elif selected_type in ["ニュース（一般）", "ニュース（一般サイト）"]:
             display_items = general_items
         else:
             display_items = official_items + general_items
