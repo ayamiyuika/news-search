@@ -11,7 +11,6 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import zlib
 import streamlit as st
-import streamlit.components.v1 as components
 
 # 日本標準時（JST）の定義
 JST = datetime.timezone(datetime.timedelta(hours=9))
@@ -1061,7 +1060,7 @@ st.markdown(
 )
 
 # ==========================================
-# 6. サイドバー操作パネル
+# 6. サイドバー操作パネル（「2. 分類」を削除・整理）
 # ==========================================
 today = datetime.datetime.now(JST).date()
 
@@ -1114,19 +1113,7 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-    st.write("**2. 分類**")
-    selected_category = st.radio(
-        "選択した分類の先頭へスクロールします",
-        [
-            "すべて",
-            "JR",
-            "私鉄",
-            "近鉄グループ",
-        ],
-    )
-
-    st.markdown("---")
-    st.write("**3. 公式発表・ニュース（一般）**")
+    st.write("**2. 公式発表・ニュース（一般）**")
     selected_type = st.radio(
         "表示種別",
         ["すべて", "公式発表", "ニュース（一般サイト）"],
@@ -1134,7 +1121,7 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    st.write("**4. データ更新**")
+    st.write("**3. データ更新**")
     st.caption("※サーバー負荷軽減のため、取得結果は1時間キャッシュ（自動記憶）されます。")
     if st.button("🔄 キャッシュを破棄して最新取得", type="primary", use_container_width=True):
         st.cache_data.clear()
@@ -1196,32 +1183,8 @@ render_groups = [
     ("kintetsu", "近鉄グループ", kintetsu_list),
 ]
 
-target_anchor_map = {
-    "すべて": "sec-top",
-    "JR": "sec-jr",
-    "私鉄": "sec-private",
-    "近鉄グループ": "sec-kintetsu",
-}
-if selected_category in target_anchor_map:
-    target_id = target_anchor_map[selected_category]
-    components.html(
-        f"""
-        <script>
-        setTimeout(function() {{
-            const doc = window.parent.document;
-            const el = doc.getElementById('{target_id}');
-            if (el) {{
-                el.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
-            }}
-        }}, 150);
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
-
 # ==========================================
-# 8. タイトルのすぐ下：高速複数選択ボタン＆一括確定フォーム
+# 8. タイトルのすぐ下：文字クリック一括選択＆確定フォーム
 # ==========================================
 st.markdown("<div id='sec-top' style='scroll-margin-top: 10px;'></div>", unsafe_allow_html=True)
 
@@ -1245,12 +1208,22 @@ st.markdown(
         gap: 12px;
         padding: 2px 0;
     }
+    /* ★ 文字を押せば一括選択できるようにポインターとホバー演出を追加 */
     .slim-label {
         flex-shrink: 0;
-        width: 140px;
+        width: 150px;
         font-weight: 800;
         font-size: 1.15em;
         line-height: 1.3;
+        cursor: pointer;
+        user-select: none;
+        padding: 3px 6px;
+        border-radius: 6px;
+        transition: all 0.15s ease;
+    }
+    .slim-label:hover {
+        background-color: rgba(30, 58, 138, 0.1);
+        text-decoration: underline;
     }
     .label-jr { color: #0284c7; }
     .label-private { color: #10b981; }
@@ -1285,7 +1258,7 @@ st.markdown(
         border-color: #1e3a8a;
         color: #1e3a8a;
     }
-    /* 選択された会社ボタン（複数選択可能・濃紺 #1e3a8a・白文字） */
+    /* ★ 選択された会社ボタン（複数選択可能・濃紺 #1e3a8a・白文字） */
     .comp-chk:checked + .comp-label {
         background-color: #1e3a8a !important;
         color: #ffffff !important;
@@ -1396,27 +1369,28 @@ def make_chk_btn_html(comp_list, prefix, selected_set):
 sel_set = st.session_state.selected_filter_companies
 has_filter = len(sel_set) > 0
 
+# ★ 案内文の変更 ＆ 文字クリック一括トグル（onclick）を実装
 jump_form_html = f"""
 <form method="GET" action="" id="company-filter-form">
   <input type="hidden" name="submitted" value="1">
   <div style="margin-top: 10px; margin-bottom: 8px; font-size: 0.9em; font-weight: 600; color: #334155;">
-    💡 会社名を押せば、その会社の記事だけを表示することができます。基本は全て表示します。
+    💡 会社名を押した後に、『選択した会社の記事を表示する』ボタンを押すと、その会社の記事だけを表示することができます。基本は全て表示します。
   </div>
   <div class="slim-jump-container">
     <div class="slim-jump-row">
-      <div class="slim-label label-jr">🚆 JR</div>
+      <div class="slim-label label-jr" onclick="(function(){{var c=document.querySelectorAll('input[id^=\\'chk-jr-\\']');var a=true;c.forEach(function(x){{if(!x.checked)a=false;}});c.forEach(function(x){{x.checked=!a;}});}})()" title="クリックでJR各社を一括選択/解除">🚆 JR</div>
       <div class="slim-btn-wrapper">
         {make_chk_btn_html(jr_list, 'jr', sel_set)}
       </div>
     </div>
     <div class="slim-jump-row">
-      <div class="slim-label label-private">🚇 私鉄</div>
+      <div class="slim-label label-private" onclick="(function(){{var c=document.querySelectorAll('input[id^=\\'chk-private-\\']');var a=true;c.forEach(function(x){{if(!x.checked)a=false;}});c.forEach(function(x){{x.checked=!a;}});}})()" title="クリックで私鉄各社を一括選択/解除">🚇 私鉄</div>
       <div class="slim-btn-wrapper">
         {make_chk_btn_html(private_list, 'private', sel_set)}
       </div>
     </div>
     <div class="slim-jump-row">
-      <div class="slim-label label-kintetsu">🏢 近鉄グループ</div>
+      <div class="slim-label label-kintetsu" onclick="(function(){{var c=document.querySelectorAll('input[id^=\\'chk-kintetsu-\\']');var a=true;c.forEach(function(x){{if(!x.checked)a=false;}});c.forEach(function(x){{x.checked=!a;}});}})()" title="クリックで近鉄グループ各社を一括選択/解除">🏢 近鉄グループ</div>
       <div class="slim-btn-wrapper">
         {make_chk_btn_html(kintetsu_list, 'kintetsu', sel_set)}
       </div>
