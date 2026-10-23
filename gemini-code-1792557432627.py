@@ -342,7 +342,7 @@ COMPANY_POOL = {
             "https://www.aham.jp/information/",
             "https://www.aham.jp/",
         ],
-        "query": "あべのハルカス美術館",
+        "query": '"あべのハルカス美術館"',
     },
     "kwe": {
         "id": "kwe",
@@ -352,7 +352,7 @@ COMPANY_POOL = {
             "https://www.kwe.co.jp/news/",
             "https://www.kwe.co.jp/",
         ],
-        "query": "近鉄エクスプレス",
+        "query": '"近鉄エクスプレス"',
     },
     "kintetsu-dept": {
         "id": "kintetsu-dept",
@@ -362,7 +362,7 @@ COMPANY_POOL = {
             "https://www.d-kintetsu.co.jp/corporate/",
             "https://www.d-kintetsu.co.jp/",
         ],
-        "query": "近鉄百貨店",
+        "query": '"近鉄百貨店"',
     },
     "kintetsu-retailing": {
         "id": "kintetsu-retailing",
@@ -372,7 +372,7 @@ COMPANY_POOL = {
             "https://knt-rt.co.jp/news/",
             "https://knt-rt.co.jp/",
         ],
-        "query": "近鉄リテーリング",
+        "query": '"近鉄リテーリング"',
     },
     "kinsho-store": {
         "id": "kinsho-store",
@@ -382,7 +382,7 @@ COMPANY_POOL = {
             "https://www.kinsho-store.co.jp/html/news.php",
             "https://www.kinsho-store.co.jp/",
         ],
-        "query": "近商ストア",
+        "query": '"近商ストア"',
     },
     "miyako-hotels": {
         "id": "miyako-hotels",
@@ -393,7 +393,7 @@ COMPANY_POOL = {
             "https://www.miyakohotels.ne.jp/information/",
             "https://www.miyakohotels.ne.jp/",
         ],
-        "query": "近鉄・都ホテルズ OR 都ホテルズ＆リゾーツ OR 都ホテル",
+        "query": '"近鉄・都ホテルズ" OR "都ホテルズ＆リゾーツ" OR "都ホテル"',
     },
     "knt-ct": {
         "id": "knt-ct",
@@ -403,7 +403,7 @@ COMPANY_POOL = {
             "https://www.kntcthd.co.jp/news/",
             "https://www.kntcthd.co.jp/",
         ],
-        "query": "KNT-CTホールディングス OR \"KNT-CT\"",
+        "query": '"KNT-CTホールディングス" OR "KNT-CT"',
     },
     "knt": {
         "id": "knt",
@@ -414,7 +414,7 @@ COMPANY_POOL = {
             "https://corp.knt.co.jp/",
             "https://www.knt.co.jp/",
         ],
-        "query": "近畿日本ツーリスト",
+        "query": '"近畿日本ツーリスト"',
     },
     "club-tourism": {
         "id": "club-tourism",
@@ -425,7 +425,7 @@ COMPANY_POOL = {
             "https://www.club-tourism.co.jp/jpn/",
             "https://www.club-t.com/ct/news/",
         ],
-        "query": "クラブツーリズム",
+        "query": '"クラブツーリズム"',
     },
     "kaiyukan": {
         "id": "kaiyukan",
@@ -435,7 +435,7 @@ COMPANY_POOL = {
             "https://www.kaiyukan.com/topics/",
             "https://www.kaiyukan.com/",
         ],
-        "query": "海遊館",
+        "query": '"海遊館"',
     },
     "shima-spain-village": {
         "id": "shima-spain-village",
@@ -445,7 +445,7 @@ COMPANY_POOL = {
             "https://www.parque-net.com/press/",
             "https://www.parque-net.com/blog/?cat=7",
         ],
-        "query": "志摩スペイン村 OR パルケエスパーニャ",
+        "query": '"志摩スペイン村" OR "パルケエスパーニャ"',
     },
     "kintetsu-bus": {
         "id": "kintetsu-bus",
@@ -455,8 +455,9 @@ COMPANY_POOL = {
             "https://www.kintetsu-bus.co.jp/news/",
             "https://www.kintetsu-bus.co.jp/",
         ],
-        "query": "近鉄バス",
+        "query": '"近鉄バス"',
     },
+    # ★ 奈良交通：完全一致フレーズ検索で警察の事故WeeklyNewsの誤爆を根絶
     "nara-kotsu": {
         "id": "nara-kotsu",
         "name": "奈良交通",
@@ -465,7 +466,7 @@ COMPANY_POOL = {
             "https://www.narakotsu.co.jp/news/category/press/",
             "https://www.narakotsu.co.jp/news/",
         ],
-        "query": "奈良交通",
+        "query": '"奈良交通"',
     },
     "sanco-hd": {
         "id": "sanco-hd",
@@ -475,7 +476,7 @@ COMPANY_POOL = {
             "https://holdings.sanco.co.jp/news/",
             "https://holdings.sanco.co.jp/",
         ],
-        "query": "三交ホールディングス OR 三重交通グループホールディングス",
+        "query": '"三交ホールディングス" OR "三重交通グループホールディングス"',
     },
     "sanco": {
         "id": "sanco",
@@ -485,7 +486,7 @@ COMPANY_POOL = {
             "https://www.sanco.co.jp/news/",
             "https://www.sanco.co.jp/",
         ],
-        "query": "三重交通",
+        "query": '"三重交通"',
     },
 }
 
@@ -678,6 +679,26 @@ def clean_surrounding_html(surrounding):
     return surrounding
 
 
+# ★ 一般ニュースの概要（summary）から無関係な広告・他社PR・問い合わせゴミを徹底除去
+def clean_news_summary(summary, title, company_name):
+    clean = re.sub(r"<[^>]+>", " ", summary)
+    clean = html.unescape(clean)
+    clean = re.sub(r"\s+", " ", clean).strip()
+
+    # 他社PR（WriteVideo等）や問い合わせ電話番号だけのノイズを検知
+    if any(ng in clean for ng in ["【新機能】", "WriteVideo", "プレスリリース *", "TEL：", "年中無休", "お問合せ 一般のお客様", "お問い合わせ先"]):
+        return f"{company_name}に関する最新の報道・ニュースです。詳細は掲載ページをご確認ください。"
+
+    # ナビゲーション記号や最新のニュースゴミを除去
+    clean = re.sub(r'[\d\s\.\»\«\>]+最新のニュース.*', '', clean)
+    clean = clean.strip()
+
+    if len(clean) < 15 or clean == title:
+        return f"{company_name}に関する最新の報道・ニュースです。詳細は掲載ページをご確認ください。"
+
+    return clean[:140] + ("..." if len(clean) > 140 else "")
+
+
 # ==========================================
 # 3. スクレイピング（公式・一般ニュース）
 # ==========================================
@@ -832,6 +853,10 @@ def fetch_official_releases(company_info, max_days_back=21):
 
                 clean_t = clean_leading_date(clean_t)
 
+                # ★ 奈良交通の「総合路線バス」「臨時バス」等の接頭辞を除去してタイトルをスッキリさせる
+                if company_info["id"] == "nara-kotsu":
+                    clean_t = re.sub(r'^(?:総合路線バス|路線バス|臨時バス|高速バス|貸切バス|観光バス|お知らせ|プレスリリース)+', '', clean_t).strip()
+
                 if len(clean_t) < 5 or clean_t in GENERIC_LINK_TEXTS or clean_t == "最新のニュース":
                     continue
 
@@ -880,7 +905,7 @@ def fetch_official_releases(company_info, max_days_back=21):
     return results
 
 
-def fetch_general_news(query, max_days_back=21):
+def fetch_general_news(query, company_name, max_days_back=21):
     results = []
     encoded_q = urllib.parse.quote(query)
     rss_url = f"https://www.bing.com/news/search?q={encoded_q}&format=rss&mkt=ja-JP"
@@ -947,10 +972,23 @@ def fetch_general_news(query, max_days_back=21):
             clean_desc = re.sub(r"<[^>]+>", " ", desc)
             clean_desc = html.unescape(clean_desc)
             clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
-            summary = clean_desc if len(clean_desc) > 10 else clean_title
 
-            if summary == clean_title or len(summary) < 15:
-                summary = "報道機関のニュース掲載ページをご確認ください。記事の全文および関連情報が掲載されています。"
+            combined_text = clean_title + " " + clean_desc
+
+            # ★ 奈良交通をはじめ、警察の事故WeeklyNewsや事件逮捕を確実に除外
+            if any(ng in combined_text for ng in ["警察Weekly", "県警Weekly", "現行犯逮捕", "酒酔い運転", "ひき逃げ", "安全運転管理者協会", "死亡事故"]):
+                continue
+
+            # ★ 会社名がタイトルか概要に一度も含まれていない場合は無関係として除外
+            clean_comp = company_name.replace("（", "").replace("）", "")
+            comp_keywords = [clean_comp]
+            if "・" in clean_comp:
+                comp_keywords.extend(clean_comp.split("・"))
+            if not any(kw in combined_text for kw in comp_keywords):
+                continue
+
+            # ★ 概要をクレンジング（他社PR一覧・電話番号などのゴミを除去）
+            summary = clean_news_summary(clean_desc, clean_title, company_name)
 
             source_name = ""
             for child in item:
@@ -984,7 +1022,7 @@ def fetch_general_news(query, max_days_back=21):
                 "date": item_date,
                 "type": "ニュース（一般サイト）",
                 "title": clean_title,
-                "summary": summary[:140] + ("..." if len(summary) > 140 else ""),
+                "summary": summary,
                 "url": link,
                 "pdf_url": None,
                 "source": source_name,
@@ -1004,7 +1042,7 @@ def get_single_company_data(company_dict, max_days_back=21):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
-        general = fetch_general_news(company_dict["query"], max_days_back=max_days_back)
+        general = fetch_general_news(company_dict["query"], company_dict["name"], max_days_back=max_days_back)
 
     combined = list(official)
     seen_urls = {item["url"] for item in official}
@@ -1038,7 +1076,6 @@ st.markdown(
         border-color: #172554 !important;
         color: #ffffff !important;
     }
-    /* secondary ボタン（非選択時・灰色背景） */
     button[kind="secondary"],
     button[data-testid="baseButton-secondary"],
     div[data-testid="stButton"] button[kind="secondary"],
@@ -1056,7 +1093,6 @@ st.markdown(
         color: #1e293b !important;
         border-color: #94a3b8 !important;
     }
-    /* サイドバーのコンパクトボタンスタイル */
     section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] button {
         padding: 5px 8px !important;
         font-size: 0.86em !important;
@@ -1071,7 +1107,7 @@ st.markdown(
 )
 
 # ==========================================
-# 6. サイドバー操作パネル（横並び2ボタン化）
+# 6. サイドバー操作パネル
 # ==========================================
 today = datetime.datetime.now(JST).date()
 
@@ -1124,7 +1160,6 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-    # ★ 見出しを「2. 公式発表・ニュース」に変更し、横並び2つの連動トグルボタン化
     st.write("**2. 公式発表・ニュース**")
 
     btn_type_off = "primary" if st.session_state.show_official else "secondary"
@@ -1134,7 +1169,6 @@ with st.sidebar:
     with col_t1:
         if st.button("公式発表", key="btn_toggle_official", type=btn_type_off, use_container_width=True):
             st.session_state.show_official = not st.session_state.show_official
-            # 両方オフになった場合は全オンに戻す
             if not st.session_state.show_official and not st.session_state.show_news:
                 st.session_state.show_official = True
                 st.session_state.show_news = True
@@ -1142,7 +1176,6 @@ with st.sidebar:
     with col_t2:
         if st.button("ニュース", key="btn_toggle_news", type=btn_type_news, use_container_width=True):
             st.session_state.show_news = not st.session_state.show_news
-            # 両方オフになった場合は全オンに戻す
             if not st.session_state.show_official and not st.session_state.show_news:
                 st.session_state.show_official = True
                 st.session_state.show_news = True
@@ -1236,7 +1269,6 @@ st.markdown(
         gap: 12px;
         padding: 2px 0;
     }
-    /* 「近鉄グループ」などの文字を絶対に改行させず1行で表示 */
     .slim-label {
         flex-shrink: 0;
         width: auto !important;
