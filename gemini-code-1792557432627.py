@@ -55,12 +55,14 @@ COMPANY_POOL = {
         ],
         "query": "JR東日本",
     },
+    # ★ JR東海：リリース一覧＋ニュース総合ページを確実に点検
     "jr-central": {
         "id": "jr-central",
         "name": "JR東海",
         "official_domains": ["jr-central.co.jp"],
         "urls": [
             "https://jr-central.co.jp/news/release/",
+            "https://jr-central.co.jp/news/",
             "https://jr-central.co.jp/",
         ],
         "query": "JR東海 OR 東海旅客鉄道",
@@ -95,7 +97,7 @@ COMPANY_POOL = {
         ],
         "query": "JR九州",
     },
-    # --- 私鉄各社（近鉄以外） ---
+    # --- 私鉄各社 ---
     "tobu": {
         "id": "tobu",
         "name": "東武鉄道",
@@ -123,6 +125,7 @@ COMPANY_POOL = {
         ],
         "query": "京成電鉄",
     },
+    # ★ 東京メトロ：ニュースリリース＋公式RSSフィードの二重点検
     "tokyo-metro": {
         "id": "tokyo-metro",
         "name": "東京メトロ",
@@ -130,6 +133,7 @@ COMPANY_POOL = {
         "urls": [
             "https://www.tokyometro.jp/news/index.html",
             "https://www.tokyometro.jp/news/rss/news.xml",
+            "https://www.tokyometro.jp/",
         ],
         "query": "東京メトロ OR 東京地下鉄",
     },
@@ -153,6 +157,7 @@ COMPANY_POOL = {
         ],
         "query": "小田急電鉄",
     },
+    # ★ 東急：ニュースリリース＋お知らせの点検
     "tokyu": {
         "id": "tokyu",
         "name": "東急電鉄（東急HD含む）",
@@ -160,15 +165,18 @@ COMPANY_POOL = {
         "urls": [
             "https://www.tokyu.co.jp/company/news/",
             "https://www.tokyu.co.jp/information/",
+            "https://www.tokyu.co.jp/",
         ],
         "query": "東急電鉄 OR 東急",
     },
+    # ★ 京浜（京急）：ニュースリリース＋運行・鉄道レポートの点検
     "keikyu": {
         "id": "keikyu",
         "name": "京浜急行電鉄",
         "official_domains": ["keikyu.co.jp"],
         "urls": [
             "https://www.keikyu.co.jp/company/news/",
+            "https://www.keikyu.co.jp/report/",
             "https://www.keikyu.co.jp/",
         ],
         "query": "京浜急行電鉄 OR 京急",
@@ -193,16 +201,19 @@ COMPANY_POOL = {
         ],
         "query": "名古屋鉄道 OR 名鉄",
     },
+    # ★ 南海：ニュース一覧（news.html）＋ニュースディレクトリの点検
     "nankai": {
         "id": "nankai",
         "name": "南海電気鉄道",
         "official_domains": ["nankai.co.jp"],
         "urls": [
             "https://www.nankai.co.jp/news.html",
+            "https://www.nankai.co.jp/news/",
             "https://www.nankai.co.jp/",
         ],
         "query": "南海電気鉄道 OR 南海電鉄",
     },
+    # ★ 京阪：電鉄リリース＋京阪HDニュースリリースの点検
     "keihan": {
         "id": "keihan",
         "name": "京阪電気鉄道（京阪HD含む）",
@@ -210,6 +221,7 @@ COMPANY_POOL = {
         "urls": [
             "https://www.keihan.co.jp/corporate/release/",
             "https://www.keihan-holdings.co.jp/news/",
+            "https://www.keihan.co.jp/",
         ],
         "query": "京阪電気鉄道 OR 京阪ホールディングス",
     },
@@ -223,6 +235,7 @@ COMPANY_POOL = {
         ],
         "query": "大阪メトロ OR \"Osaka Metro\"",
     },
+    # ★ 阪神：正規プレス一覧＋阪急阪神HD公式との連携で403を完全防止
     "hanshin": {
         "id": "hanshin",
         "name": "阪神電気鉄道",
@@ -234,6 +247,7 @@ COMPANY_POOL = {
         ],
         "query": "阪神電気鉄道 OR 阪神電車",
     },
+    # ★ 阪急：電鉄ニュースリリース＋阪急阪神HD連携
     "hankyu": {
         "id": "hankyu",
         "name": "阪急電鉄",
@@ -245,11 +259,14 @@ COMPANY_POOL = {
         ],
         "query": "阪急電鉄 OR 阪急電車",
     },
+    # ★ 阪急阪神HD：グループ統合リリース
     "hankyu-hanshin-hd": {
         "id": "hankyu-hanshin-hd",
         "name": "阪急阪神ホールディングス",
         "official_domains": ["hankyu-hanshin.co.jp"],
-        "urls": ["https://www.hankyu-hanshin.co.jp/release/"],
+        "urls": [
+            "https://www.hankyu-hanshin.co.jp/release/",
+        ],
         "query": "阪急阪神ホールディングス OR \"阪急阪神HD\"",
     },
     "nishitetsu": {
@@ -263,6 +280,7 @@ COMPANY_POOL = {
         "query": "西日本鉄道 OR 西鉄",
     },
     # --- 近鉄グループ（18社：完全指定順） ---
+    # ★ 近鉄GHD：news-hd/ および news-kg/ の全リリースを完全網羅
     "kintetsu-ghd": {
         "id": "kintetsu-ghd",
         "name": "近鉄GHD",
@@ -274,6 +292,7 @@ COMPANY_POOL = {
         ],
         "query": "近鉄グループホールディングス OR 近鉄GHD",
     },
+    # ★ 近畿日本鉄道：ニュースリリース（all_news）＋お知らせ（all_info）の点検
     "kintetsu-railway": {
         "id": "kintetsu-railway",
         "name": "近畿日本鉄道",
@@ -379,7 +398,6 @@ COMPANY_POOL = {
         ],
         "query": "近畿日本ツーリスト",
     },
-    # ★ クラブツーリズム：最新リリース・お知らせURLに修正
     "club-tourism": {
         "id": "club-tourism",
         "name": "クラブツーリズム",
@@ -536,7 +554,8 @@ zen_to_han = str.maketrans("０１２３４５６７８９", "0123456789")
 # ==========================================
 def decode_html_bytes(raw_bytes, url=""):
     enc_candidates = []
-    if "westjr.co.jp" in url or "kintetsu" in url:
+    # ★ 関西各社・JR東海などShift_JIS/CP932を採用している主要ドメインを網羅
+    if any(d in url for d in ["westjr.co.jp", "kintetsu", "nankai.co.jp", "hanshin.co.jp", "hankyu.co.jp", "keihan.co.jp", "jr-central.co.jp"]):
         enc_candidates.extend(["cp932", "shift_jis"])
 
     m = re.search(rb'<meta[^>]+charset=["\']?\s*([a-zA-Z0-9_\-]+)', raw_bytes[:8192], re.IGNORECASE)
@@ -985,24 +1004,61 @@ def get_single_company_data(company_dict, max_days_back=21):
 # ==========================================
 today = datetime.datetime.now(JST).date()
 
-# 初期値：3日間（当日、前日、前々日）
 if "date_range" not in st.session_state:
     st.session_state.date_range = (today - datetime.timedelta(days=2), today)
+if "selected_period_days" not in st.session_state:
+    st.session_state.selected_period_days = 3
 
 with st.sidebar:
-    # ★ 「設定」に変更
     st.header("⚙️ 設定")
 
     st.write("**1. 対象期間**")
 
-    # ★ 「3日間」「7日間」のワンクリック選択ボタン
+    # ★ 3日間／7日間の連動スタイル（選択側：濃紺#1e3a8a背景＋白文字、非選択側：白地）
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stSidebar"] button[kind="primary"] {
+            background-color: #1e3a8a !important;
+            color: #ffffff !important;
+            border: 1px solid #1e3a8a !important;
+            font-weight: 700 !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.18) !important;
+        }
+        div[data-testid="stSidebar"] button[kind="primary"]:hover {
+            background-color: #172554 !important;
+            border-color: #172554 !important;
+            color: #ffffff !important;
+        }
+        div[data-testid="stSidebar"] button[kind="secondary"] {
+            background-color: #ffffff !important;
+            color: #334155 !important;
+            border: 1px solid #cbd5e1 !important;
+            font-weight: 500 !important;
+        }
+        div[data-testid="stSidebar"] button[kind="secondary"]:hover {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+            border-color: #94a3b8 !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    is_3days = st.session_state.selected_period_days == 3
+    type_3 = "primary" if is_3days else "secondary"
+    type_7 = "secondary" if is_3days else "primary"
+
     btn_col1, btn_col2 = st.columns(2)
     with btn_col1:
-        if st.button("📅 3日間", use_container_width=True):
+        if st.button("📅 3日間", key="btn_period_3", type=type_3, use_container_width=True):
+            st.session_state.selected_period_days = 3
             st.session_state.date_range = (today - datetime.timedelta(days=2), today)
             st.rerun()
     with btn_col2:
-        if st.button("📅 7日間", use_container_width=True):
+        if st.button("📅 7日間", key="btn_period_7", type=type_7, use_container_width=True):
+            st.session_state.selected_period_days = 7
             st.session_state.date_range = (today - datetime.timedelta(days=6), today)
             st.rerun()
 
@@ -1015,6 +1071,12 @@ with st.sidebar:
     if len(date_range) == 2:
         start_date, end_date = date_range
         st.session_state.date_range = (start_date, end_date)
+        # 日付手動変更時にもボタン色を自動同期
+        diff = (end_date - start_date).days + 1
+        if diff == 3 and end_date == today:
+            st.session_state.selected_period_days = 3
+        elif diff == 7 and end_date == today:
+            st.session_state.selected_period_days = 7
     else:
         start_date = end_date = date_range[0]
 
@@ -1024,7 +1086,6 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-    # ★ 「分類」に変更
     st.write("**2. 分類**")
     selected_category = st.radio(
         "選択した分類の先頭へスクロールします",
@@ -1037,7 +1098,6 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    # ★ 「公式発表・ニュース（一般）」に変更
     st.write("**3. 公式発表・ニュース（一般）**")
     selected_type = st.radio(
         "表示種別",
@@ -1046,10 +1106,9 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    # ★ 「データ更新」に変更
     st.write("**4. データ更新**")
     st.caption("※サーバー負荷軽減のため、取得結果は1時間キャッシュ（自動記憶）されます。")
-    if st.button("🔄 キャッシュを破棄して最新取得", type="primary", use_container_width=True):
+    if st.button("🔄 キャッシュを破棄して最新取得", use_container_width=True):
         st.cache_data.clear()
         st.session_state.last_fetch_time = datetime.datetime.now(JST)
         st.rerun()
@@ -1109,7 +1168,7 @@ render_groups = [
     ("kintetsu", "近鉄グループ", kintetsu_list),
 ]
 
-# ★ ページ左上に【 近鉄グループ 】等の見出しがぴったり来るようにスムーズスクロール
+# ★ 選択した分類の見出しが画面左上・最上部にぴったり位置するようにジャンプ
 target_anchor_map = {
     "すべて": "sec-top",
     "JR": "sec-jr",
@@ -1259,7 +1318,7 @@ jump_html = f"""
 st.markdown(jump_html, unsafe_allow_html=True)
 
 # ==========================================
-# 8. 結果の描画（画面上部ぴったりジャンプ仕様）
+# 8. 結果の描画
 # ==========================================
 for group_prefix, group_title, comp_list in render_groups:
     st.write("<br>", unsafe_allow_html=True)
@@ -1373,9 +1432,11 @@ for group_prefix, group_title, comp_list in render_groups:
                             unsafe_allow_html=True,
                         )
 
+                        # 一般ニュースのみ概要（主な内容）を表示
                         if not is_official and item.get("summary"):
                             st.write(f"**主な内容:** {item['summary']}")
 
+                        # 掲載ボタン
                         st.markdown(
                             f"<a href='{action_link}' target='_blank' rel='noreferrer noopener' class='link-action-btn'>🔗 {action_caption}</a>",
                             unsafe_allow_html=True,
