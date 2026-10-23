@@ -24,7 +24,6 @@ st.set_page_config(
 )
 
 st.title("🚆 全国大手鉄道会社  広報発表・ニュース 概要")
-# ★ ご指定のコメントに変更
 st.caption("JR・大手私鉄・近鉄グループ各社の公式発表・最新ニュースを一覧表示します。")
 
 # 非表示（折りたたみ）管理用のセッションステート
@@ -369,7 +368,6 @@ COMPANY_POOL = {
         ],
         "query": "KNT-CTホールディングス OR \"KNT-CT\"",
     },
-    # ★ 新規追加：近畿日本ツーリスト
     "knt": {
         "id": "knt",
         "name": "近畿日本ツーリスト",
@@ -381,14 +379,15 @@ COMPANY_POOL = {
         ],
         "query": "近畿日本ツーリスト",
     },
-    # ★ 新規追加：クラブツーリズム
+    # ★ クラブツーリズム：最新リリース・お知らせURLに修正
     "club-tourism": {
         "id": "club-tourism",
         "name": "クラブツーリズム",
         "official_domains": ["club-tourism.co.jp", "club-t.com"],
         "urls": [
             "https://www.club-tourism.co.jp/jpn/press/",
-            "https://www.club-tourism.co.jp/",
+            "https://www.club-tourism.co.jp/jpn/",
+            "https://www.club-t.com/ct/news/",
         ],
         "query": "クラブツーリズム",
     },
@@ -422,7 +421,6 @@ COMPANY_POOL = {
         ],
         "query": "近鉄バス",
     },
-    # ★ 奈良交通：プレスリリース一覧を優先して「最新のニュース」誤認を防止
     "nara-kotsu": {
         "id": "nara-kotsu",
         "name": "奈良交通",
@@ -433,7 +431,6 @@ COMPANY_POOL = {
         ],
         "query": "奈良交通",
     },
-    # ★ 分割独立：三交ホールディングス
     "sanco-hd": {
         "id": "sanco-hd",
         "name": "三交ホールディングス",
@@ -444,7 +441,6 @@ COMPANY_POOL = {
         ],
         "query": "三交ホールディングス OR 三重交通グループホールディングス",
     },
-    # ★ 分割独立：三重交通
     "sanco": {
         "id": "sanco",
         "name": "三重交通",
@@ -466,7 +462,6 @@ PRIVATE_ORDER = [
     "nankai", "keihan", "osaka-metro", "hanshin", "hankyu", "hankyu-hanshin-hd", "nishitetsu"
 ]
 
-# ★ ご指定の18社並び順に完全準拠
 KINTETSU_ORDER = [
     "kintetsu-ghd",
     "kintetsu-railway",
@@ -989,21 +984,37 @@ def get_single_company_data(company_dict, max_days_back=21):
 # 5. サイドバー操作パネル
 # ==========================================
 today = datetime.datetime.now(JST).date()
-# ★ デフォルトを3日間（当日、前日、前々日）に変更
-default_start = today - datetime.timedelta(days=2)
+
+# 初期値：3日間（当日、前日、前々日）
+if "date_range" not in st.session_state:
+    st.session_state.date_range = (today - datetime.timedelta(days=2), today)
 
 with st.sidebar:
-    st.header("⚙️ 設定・ジャンプ")
+    # ★ 「設定」に変更
+    st.header("⚙️ 設定")
 
     st.write("**1. 対象期間**")
+
+    # ★ 「3日間」「7日間」のワンクリック選択ボタン
+    btn_col1, btn_col2 = st.columns(2)
+    with btn_col1:
+        if st.button("📅 3日間", use_container_width=True):
+            st.session_state.date_range = (today - datetime.timedelta(days=2), today)
+            st.rerun()
+    with btn_col2:
+        if st.button("📅 7日間", use_container_width=True):
+            st.session_state.date_range = (today - datetime.timedelta(days=6), today)
+            st.rerun()
+
     date_range = st.date_input(
         "対象期間を選択",
-        value=(default_start, today),
+        value=st.session_state.date_range,
         max_value=today,
         label_visibility="collapsed",
     )
     if len(date_range) == 2:
         start_date, end_date = date_range
+        st.session_state.date_range = (start_date, end_date)
     else:
         start_date = end_date = date_range[0]
 
@@ -1013,8 +1024,8 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-    st.write("**2. 会社分類へジャンプ**")
-    # ★ 会社分類を選択すると該当セクションの一番上にジャンプ
+    # ★ 「分類」に変更
+    st.write("**2. 分類**")
     selected_category = st.radio(
         "選択した分類の先頭へスクロールします",
         [
@@ -1026,7 +1037,8 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    st.write("**3. 発表・記事の種別**")
+    # ★ 「公式発表・ニュース（一般）」に変更
+    st.write("**3. 公式発表・ニュース（一般）**")
     selected_type = st.radio(
         "表示種別",
         ["すべて", "公式発表", "ニュース（一般サイト）"],
@@ -1034,7 +1046,8 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    st.write("**4. データ更新制御**")
+    # ★ 「データ更新」に変更
+    st.write("**4. データ更新**")
     st.caption("※サーバー負荷軽減のため、取得結果は1時間キャッシュ（自動記憶）されます。")
     if st.button("🔄 キャッシュを破棄して最新取得", type="primary", use_container_width=True):
         st.cache_data.clear()
@@ -1085,7 +1098,7 @@ if "last_fetch_time" not in st.session_state:
 
 st.caption(f"🕒 最終巡回時刻: {st.session_state.last_fetch_time.strftime('%Y-%m-%d %H:%M:%S')} (日本時間) （1時間ごとに自動再巡回）")
 
-# 表示グループ（全セクションを常に配置してジャンプ可能にする）
+# 表示グループ
 jr_list = [COMPANY_POOL[cid] for cid in JR_ORDER]
 private_list = [COMPANY_POOL[cid] for cid in PRIVATE_ORDER]
 kintetsu_list = [COMPANY_POOL[cid] for cid in KINTETSU_ORDER]
@@ -1096,8 +1109,9 @@ render_groups = [
     ("kintetsu", "近鉄グループ", kintetsu_list),
 ]
 
-# ★ 会社分類が選択された場合、該当セクションの一番上にジャンプするJavaScript
+# ★ ページ左上に【 近鉄グループ 】等の見出しがぴったり来るようにスムーズスクロール
 target_anchor_map = {
+    "すべて": "sec-top",
     "JR": "sec-jr",
     "私鉄": "sec-private",
     "近鉄グループ": "sec-kintetsu",
@@ -1113,7 +1127,7 @@ if selected_category in target_anchor_map:
             if (el) {{
                 el.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
             }}
-        }}, 200);
+        }}, 150);
         </script>
         """,
         height=0,
@@ -1121,8 +1135,10 @@ if selected_category in target_anchor_map:
     )
 
 # ==========================================
-# 7. タイトルのすぐ下：クイックジャンプ（新会社反映）
+# 7. タイトルのすぐ下：クイックジャンプ
 # ==========================================
+st.markdown("<div id='sec-top' style='scroll-margin-top: 10px;'></div>", unsafe_allow_html=True)
+
 st.markdown(
     """
     <style>
@@ -1243,12 +1259,12 @@ jump_html = f"""
 st.markdown(jump_html, unsafe_allow_html=True)
 
 # ==========================================
-# 8. 結果の描画（地域削除・公式発表は見出しのみ・一般ニュースは見出し＋概要）
+# 8. 結果の描画（画面上部ぴったりジャンプ仕様）
 # ==========================================
 for group_prefix, group_title, comp_list in render_groups:
     st.write("<br>", unsafe_allow_html=True)
-    # ★ 会社分類ジャンプ先アンカー
-    st.markdown(f"<div id='sec-{group_prefix}'></div>", unsafe_allow_html=True)
+    # ★ 見出しが画面左上・最上部にぴったり位置するように scroll-margin-top を調整
+    st.markdown(f"<div id='sec-{group_prefix}' style='scroll-margin-top: 15px;'></div>", unsafe_allow_html=True)
     st.markdown(f"## 【 {group_title} 】")
     st.divider()
 
@@ -1279,7 +1295,6 @@ for group_prefix, group_title, comp_list in render_groups:
 
         h_col1, h_col2 = st.columns([5, 1.3])
         with h_col1:
-            # ★ 会社名の後の「（地域）」を削除
             st.markdown(
                 f"""
                 <div id='{anchor_id}' style='margin-top: 18px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 3px solid #0284c7; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px;'>
@@ -1358,11 +1373,9 @@ for group_prefix, group_title, comp_list in render_groups:
                             unsafe_allow_html=True,
                         )
 
-                        # ★ 公式発表は見出しのみ。一般ニュースは見出し＋概要（主な内容）を表示
                         if not is_official and item.get("summary"):
                             st.write(f"**主な内容:** {item['summary']}")
 
-                        # 掲載ボタン
                         st.markdown(
                             f"<a href='{action_link}' target='_blank' rel='noreferrer noopener' class='link-action-btn'>🔗 {action_caption}</a>",
                             unsafe_allow_html=True,
