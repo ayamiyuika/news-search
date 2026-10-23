@@ -1285,7 +1285,7 @@ st.markdown(
         border-color: #1e3a8a;
         color: #1e3a8a;
     }
-    /* ★ 選択された会社ボタン（複数選択可能・濃紺 #1e3a8a・白文字） */
+    /* 選択された会社ボタン（複数選択可能・濃紺 #1e3a8a・白文字） */
     .comp-chk:checked + .comp-label {
         background-color: #1e3a8a !important;
         color: #ffffff !important;
@@ -1381,7 +1381,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ★ 高速チェックボックス＋ラベル生成（クリック時に即座に青色トグル・リロードなし）
 def make_chk_btn_html(comp_list, prefix, selected_set):
     pieces = []
     for c in comp_list:
@@ -1419,4 +1418,152 @@ jump_form_html = f"""
     <div class="slim-jump-row">
       <div class="slim-label label-kintetsu">🏢 近鉄グループ</div>
       <div class="slim-btn-wrapper">
-        {make_chk_btn_html
+        {make_chk_btn_html(kintetsu_list, 'kintetsu', sel_set)}
+      </div>
+    </div>
+  </div>
+  <div class="filter-action-bar">
+    <button type="submit" class="apply-filter-btn">選択した会社の記事を表示する</button>
+    <a href="?reset=1" class="clear-filter-btn">🔄 選択を解除する</a>
+  </div>
+</form>
+"""
+
+st.markdown(jump_form_html, unsafe_allow_html=True)
+
+# ==========================================
+# 9. 結果の描画（選択された会社のみ記事表示／他社は会社名のみ）
+# ==========================================
+for group_prefix, group_title, comp_list in render_groups:
+    st.write("<br>", unsafe_allow_html=True)
+    st.markdown(f"<div id='sec-{group_prefix}' style='scroll-margin-top: 15px;'></div>", unsafe_allow_html=True)
+    st.markdown(f"## 【 {group_title} 】")
+    st.divider()
+
+    for comp in comp_list:
+        raw_items = all_cached_data.get(comp["name"], [])
+
+        period_items = [
+            item for item in raw_items
+            if start_date <= item["date"] <= end_date
+        ]
+
+        official_items = [i for i in period_items if i["type"] == "公式発表"]
+        general_items = [i for i in period_items if i["type"] == "ニュース（一般サイト）"]
+
+        official_items.sort(key=lambda x: x["date"], reverse=True)
+        general_items.sort(key=lambda x: x["date"], reverse=True)
+
+        if selected_type == "公式発表":
+            display_items = official_items
+        elif selected_type == "ニュース（一般サイト）":
+            display_items = general_items
+        else:
+            display_items = official_items + general_items
+
+        main_url = comp["urls"][0]
+        anchor_id = f"{group_prefix}-{comp['id']}"
+
+        is_manually_hidden = comp["id"] in st.session_state.hidden_companies
+        is_filtered_out = has_filter and (comp["id"] not in st.session_state.selected_filter_companies)
+        should_hide_articles = is_manually_hidden or is_filtered_out
+
+        h_col1, h_col2 = st.columns([5, 1.3])
+        with h_col1:
+            st.markdown(
+                f"""
+                <div id='{anchor_id}' style='margin-top: 18px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 3px solid #1e3a8a; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px;'>
+                    <span style='font-size: 1.85em; font-weight: 800; color: #1e293b; line-height: 1.2;'>🏢 {comp['name']}</span>
+                    <a href='{main_url}' target='_blank' rel='noreferrer noopener' style='font-size: 0.9em; font-weight: 600; color: #1e3a8a; text-decoration: none;'>[公式HP ↗]</a>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with h_col2:
+            st.write("<div style='margin-top: 22px;'></div>", unsafe_allow_html=True)
+            btn_label = "記事を表示" if should_hide_articles else "記事を非表示"
+            btn_type = "primary" if should_hide_articles else "secondary"
+            if st.button(btn_label, key=f"btn_toggle_{group_prefix}_{comp['id']}", type=btn_type, use_container_width=True):
+                if should_hide_articles:
+                    if comp["id"] in st.session_state.hidden_companies:
+                        st.session_state.hidden_companies.remove(comp["id"])
+                    if has_filter and comp["id"] not in st.session_state.selected_filter_companies:
+                        st.session_state.selected_filter_companies.add(comp["id"])
+                else:
+                    st.session_state.hidden_companies.add(comp["id"])
+                    if comp["id"] in st.session_state.selected_filter_companies:
+                        st.session_state.selected_filter_companies.remove(comp["id"])
+                st.rerun()
+
+        if should_hide_articles:
+            st.write("")
+            continue
+
+        if not display_items:
+            type_label = f"（{selected_type}）" if selected_type != "すべて" else ""
+            st.info(f"📅 指定期間・条件内の発表{type_label}は **なし** です。")
+            st.write("")
+        else:
+            for item in display_items:
+                is_official = item["type"] == "公式発表"
+
+                if is_official:
+                    type_badge = (
+                        "<div style='display:inline-block; padding:3px 10px; background-color:#1e3a8a; "
+                        "color:#ffffff; font-size:0.8em; font-weight:700; border-radius:5px; margin-bottom:4px; "
+                        "box-shadow: 0 1px 2px rgba(0,0,0,0.15); letter-spacing:0.04em;'>📢 公式発表</div>"
+                    )
+
+                    title_link = item["url"]
+                    if comp["id"] == "jr-west":
+                        if item.get("pdf_url"):
+                            action_link = item["pdf_url"]
+                            action_caption = "掲載資料（PDF）を開く ↗"
+                            file_badge = "🟥 **[PDF資料]**"
+                        else:
+                            action_link = item["url"]
+                            action_caption = "掲載ページを開く ↗"
+                            file_badge = "🌐 **[Web発表]**"
+                    else:
+                        action_link = item.get("pdf_url") or item["url"]
+                        action_caption = "掲載資料（PDF）を開く ↗" if item.get("is_pdf") else "掲載ページを開く ↗"
+                        file_badge = "🟥 **[PDF資料]**" if item.get("is_pdf") else "🌐 **[Web発表]**"
+
+                else:
+                    type_badge = (
+                        "<div style='display:inline-block; padding:3px 9px; background-color:#f1f5f9; "
+                        "color:#475569; font-size:0.78em; font-weight:600; border-radius:5px; "
+                        "border:1px solid #cbd5e1; margin-bottom:4px;'>📰 ニュース（一般）</div>"
+                    )
+                    title_link = item["url"]
+                    action_link = item["url"]
+                    action_caption = "掲載ページを開く ↗"
+                    file_badge = "🌐 **[Webニュース]**"
+
+                with st.container(border=True):
+                    col_left, col_right = st.columns([1, 4])
+                    with col_left:
+                        st.write(f"📅 **{item['date']}**")
+                        st.markdown(type_badge, unsafe_allow_html=True)
+                        st.markdown(file_badge)
+                        st.caption(f"情報元: {item['source']}")
+                    with col_right:
+                        st.markdown(
+                            f"##### <a href='{title_link}' target='_blank' rel='noreferrer noopener'>{item['title']}</a>",
+                            unsafe_allow_html=True,
+                        )
+
+                        if not is_official and item.get("summary"):
+                            st.write(f"**主な内容:** {item['summary']}")
+
+                        st.markdown(
+                            f"<a href='{action_link}' target='_blank' rel='noreferrer noopener' class='link-action-btn'>🔗 {action_caption}</a>",
+                            unsafe_allow_html=True,
+                        )
+            st.write("")
+
+# フッター免責事項
+st.write("---")
+st.caption(
+    "© 鉄道広報・ニュース概要 | 本アプリは各社公式ホームページおよび報道ニュースを巡回・整理して提供しています。リンク先コンテンツの著作権は各社に帰属します。"
+)
