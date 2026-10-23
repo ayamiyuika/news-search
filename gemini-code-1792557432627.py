@@ -26,9 +26,27 @@ st.set_page_config(
 st.title("🚆 全国大手鉄道会社  広報発表・ニュース 概要")
 st.caption("JR・大手私鉄・近鉄グループ各社の公式発表・最新ニュースを一覧表示します。")
 
-# 非表示（折りたたみ）管理用のセッションステート
+# セッションステートの初期化
 if "hidden_companies" not in st.session_state:
     st.session_state.hidden_companies = set()
+if "selected_filter_companies" not in st.session_state:
+    st.session_state.selected_filter_companies = set()
+
+# ==========================================
+# 0. クエリパラメータによる会社名ボタントグルの処理
+# ==========================================
+params = st.query_params
+if "toggle_comp" in params:
+    t_id = params.get("toggle_comp")
+    if t_id == "reset":
+        st.session_state.selected_filter_companies.clear()
+    elif t_id:
+        if t_id in st.session_state.selected_filter_companies:
+            st.session_state.selected_filter_companies.remove(t_id)
+        else:
+            st.session_state.selected_filter_companies.add(t_id)
+    st.query_params.clear()
+    st.rerun()
 
 # ==========================================
 # 1. 鉄道会社・持株会社・グループ各社のマスタープール
@@ -55,7 +73,6 @@ COMPANY_POOL = {
         ],
         "query": "JR東日本",
     },
-    # ★ JR東海：リリース一覧＋ニュース総合ページを確実に点検
     "jr-central": {
         "id": "jr-central",
         "name": "JR東海",
@@ -125,7 +142,6 @@ COMPANY_POOL = {
         ],
         "query": "京成電鉄",
     },
-    # ★ 東京メトロ：ニュースリリース＋公式RSSフィードの二重点検
     "tokyo-metro": {
         "id": "tokyo-metro",
         "name": "東京メトロ",
@@ -157,7 +173,6 @@ COMPANY_POOL = {
         ],
         "query": "小田急電鉄",
     },
-    # ★ 東急：ニュースリリース＋お知らせの点検
     "tokyu": {
         "id": "tokyu",
         "name": "東急電鉄（東急HD含む）",
@@ -169,7 +184,6 @@ COMPANY_POOL = {
         ],
         "query": "東急電鉄 OR 東急",
     },
-    # ★ 京浜（京急）：ニュースリリース＋運行・鉄道レポートの点検
     "keikyu": {
         "id": "keikyu",
         "name": "京浜急行電鉄",
@@ -201,7 +215,6 @@ COMPANY_POOL = {
         ],
         "query": "名古屋鉄道 OR 名鉄",
     },
-    # ★ 南海：ニュース一覧（news.html）＋ニュースディレクトリの点検
     "nankai": {
         "id": "nankai",
         "name": "南海電気鉄道",
@@ -213,7 +226,6 @@ COMPANY_POOL = {
         ],
         "query": "南海電気鉄道 OR 南海電鉄",
     },
-    # ★ 京阪：電鉄リリース＋京阪HDニュースリリースの点検
     "keihan": {
         "id": "keihan",
         "name": "京阪電気鉄道（京阪HD含む）",
@@ -235,7 +247,6 @@ COMPANY_POOL = {
         ],
         "query": "大阪メトロ OR \"Osaka Metro\"",
     },
-    # ★ 阪神：正規プレス一覧＋阪急阪神HD公式との連携で403を完全防止
     "hanshin": {
         "id": "hanshin",
         "name": "阪神電気鉄道",
@@ -247,7 +258,6 @@ COMPANY_POOL = {
         ],
         "query": "阪神電気鉄道 OR 阪神電車",
     },
-    # ★ 阪急：電鉄ニュースリリース＋阪急阪神HD連携
     "hankyu": {
         "id": "hankyu",
         "name": "阪急電鉄",
@@ -259,7 +269,6 @@ COMPANY_POOL = {
         ],
         "query": "阪急電鉄 OR 阪急電車",
     },
-    # ★ 阪急阪神HD：グループ統合リリース
     "hankyu-hanshin-hd": {
         "id": "hankyu-hanshin-hd",
         "name": "阪急阪神ホールディングス",
@@ -280,7 +289,6 @@ COMPANY_POOL = {
         "query": "西日本鉄道 OR 西鉄",
     },
     # --- 近鉄グループ（18社：完全指定順） ---
-    # ★ 近鉄GHD：news-hd/ および news-kg/ の全リリースを完全網羅
     "kintetsu-ghd": {
         "id": "kintetsu-ghd",
         "name": "近鉄GHD",
@@ -292,7 +300,6 @@ COMPANY_POOL = {
         ],
         "query": "近鉄グループホールディングス OR 近鉄GHD",
     },
-    # ★ 近畿日本鉄道：ニュースリリース（all_news）＋お知らせ（all_info）の点検
     "kintetsu-railway": {
         "id": "kintetsu-railway",
         "name": "近畿日本鉄道",
@@ -554,7 +561,6 @@ zen_to_han = str.maketrans("０１２３４５６７８９", "0123456789")
 # ==========================================
 def decode_html_bytes(raw_bytes, url=""):
     enc_candidates = []
-    # ★ 関西各社・JR東海などShift_JIS/CP932を採用している主要ドメインを網羅
     if any(d in url for d in ["westjr.co.jp", "kintetsu", "nankai.co.jp", "hanshin.co.jp", "hankyu.co.jp", "keihan.co.jp", "jr-central.co.jp"]):
         enc_candidates.extend(["cp932", "shift_jis"])
 
@@ -1014,32 +1020,42 @@ with st.sidebar:
 
     st.write("**1. 対象期間**")
 
-    # ★ 3日間／7日間の連動スタイル（選択側：濃紺#1e3a8a背景＋白文字、非選択側：白地）
+    # ★ 濃紺（#1e3a8a）ボタンスタイル（赤色を完全排除）
     st.markdown(
         """
         <style>
-        div[data-testid="stSidebar"] button[kind="primary"] {
+        /* サイドバー内のプライマリボタン（濃紺背景＋白文字） */
+        section[data-testid="stSidebar"] button[kind="primary"],
+        section[data-testid="stSidebar"] button[data-testid="baseButton-primary"] {
             background-color: #1e3a8a !important;
+            border-color: #1e3a8a !important;
             color: #ffffff !important;
-            border: 1px solid #1e3a8a !important;
             font-weight: 700 !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.18) !important;
+            box-shadow: 0 1px 3px rgba(30, 58, 138, 0.3) !important;
         }
-        div[data-testid="stSidebar"] button[kind="primary"]:hover {
+        section[data-testid="stSidebar"] button[kind="primary"]:hover,
+        section[data-testid="stSidebar"] button[data-testid="baseButton-primary"]:hover {
             background-color: #172554 !important;
             border-color: #172554 !important;
             color: #ffffff !important;
         }
-        div[data-testid="stSidebar"] button[kind="secondary"] {
+        /* サイドバー内のセカンダリボタン（白地＋グレー枠） */
+        section[data-testid="stSidebar"] button[kind="secondary"],
+        section[data-testid="stSidebar"] button[data-testid="baseButton-secondary"] {
             background-color: #ffffff !important;
             color: #334155 !important;
             border: 1px solid #cbd5e1 !important;
             font-weight: 500 !important;
         }
-        div[data-testid="stSidebar"] button[kind="secondary"]:hover {
-            background-color: #f1f5f9 !important;
-            color: #0f172a !important;
-            border-color: #94a3b8 !important;
+        section[data-testid="stSidebar"] button[kind="secondary"]:hover,
+        section[data-testid="stSidebar"] button[data-testid="baseButton-secondary"]:hover {
+            background-color: #f8fafc !important;
+            color: #1e3a8a !important;
+            border-color: #1e3a8a !important;
+        }
+        /* ラジオボタンなどのアクセントカラーも紺色に統一 */
+        section[data-testid="stSidebar"] input[type="radio"] {
+            accent-color: #1e3a8a !important;
         }
         </style>
         """,
@@ -1071,7 +1087,6 @@ with st.sidebar:
     if len(date_range) == 2:
         start_date, end_date = date_range
         st.session_state.date_range = (start_date, end_date)
-        # 日付手動変更時にもボタン色を自動同期
         diff = (end_date - start_date).days + 1
         if diff == 3 and end_date == today:
             st.session_state.selected_period_days = 3
@@ -1108,7 +1123,8 @@ with st.sidebar:
     st.markdown("---")
     st.write("**4. データ更新**")
     st.caption("※サーバー負荷軽減のため、取得結果は1時間キャッシュ（自動記憶）されます。")
-    if st.button("🔄 キャッシュを破棄して最新取得", use_container_width=True):
+    # ★ 赤色ではなく紺色（#1e3a8a）の primary スタイルを適用
+    if st.button("🔄 キャッシュを破棄して最新取得", type="primary", use_container_width=True):
         st.cache_data.clear()
         st.session_state.last_fetch_time = datetime.datetime.now(JST)
         st.rerun()
@@ -1134,8 +1150,8 @@ for i, key in enumerate(unique_company_keys):
     with progress_placeholder.container():
         st.markdown(
             f"""
-            <div style="background-color: rgba(2, 132, 199, 0.08); padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(2, 132, 199, 0.3); margin-bottom: 8px;">
-                <div style="font-size: 0.95em; font-weight: 700; color: #0284c7; margin-bottom: 4px;">
+            <div style="background-color: rgba(30, 58, 138, 0.08); padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(30, 58, 138, 0.3); margin-bottom: 8px;">
+                <div style="font-size: 0.95em; font-weight: 700; color: #1e3a8a; margin-bottom: 4px;">
                     🔄 最新データを巡回確認中: {i+1} / {total_comps} 社 ({percent}%)
                 </div>
                 <div style="font-size: 0.85em; color: #475569;">
@@ -1168,7 +1184,6 @@ render_groups = [
     ("kintetsu", "近鉄グループ", kintetsu_list),
 ]
 
-# ★ 選択した分類の見出しが画面左上・最上部にぴったり位置するようにジャンプ
 target_anchor_map = {
     "すべて": "sec-top",
     "JR": "sec-jr",
@@ -1194,9 +1209,26 @@ if selected_category in target_anchor_map:
     )
 
 # ==========================================
-# 7. タイトルのすぐ下：クイックジャンプ
+# 7. タイトルのすぐ下：会社名選択フィルター＆クイックボタン
 # ==========================================
 st.markdown("<div id='sec-top' style='scroll-margin-top: 10px;'></div>", unsafe_allow_html=True)
+
+# ★ ご指定の案内文を表示
+has_filter = len(st.session_state.selected_filter_companies) > 0
+reset_link_html = (
+    "<a href='?toggle_comp=reset' target='_self' style='margin-left: 14px; font-size: 0.88em; font-weight: 700; color: #1e3a8a; text-decoration: underline;'>[ 🔄 選択を解除してすべて表示 ]</a>"
+    if has_filter
+    else ""
+)
+
+st.markdown(
+    f"""
+    <div style="margin-top: 10px; margin-bottom: 6px; font-size: 0.9em; font-weight: 600; color: #334155;">
+        💡 会社名を押せば、その会社の記事だけを表示することができます。基本は全て表示します。{reset_link_html}
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown(
     """
@@ -1205,7 +1237,7 @@ st.markdown(
         display: flex;
         flex-direction: column;
         gap: 8px;
-        margin-top: 8px;
+        margin-top: 6px;
         margin-bottom: 24px;
         padding: 12px 16px;
         background-color: rgba(128, 128, 128, 0.05);
@@ -1234,24 +1266,32 @@ st.markdown(
         gap: 5px;
         flex-grow: 1;
     }
+    /* 未選択時の会社ボタン（白地・グレー枠） */
     .slim-btn {
         display: inline-block;
         padding: 3px 10px;
-        background-color: var(--secondary-background-color, #ffffff);
-        color: var(--text-color, #1f2937);
-        text-decoration: none;
+        background-color: #ffffff;
+        color: #334155 !important;
+        text-decoration: none !important;
         border-radius: 12px;
-        border: 1px solid rgba(128, 128, 128, 0.25);
+        border: 1px solid rgba(128, 128, 128, 0.28);
         font-size: 0.78em;
         font-weight: 500;
         line-height: 1.5;
         transition: all 0.15s ease;
     }
     .slim-btn:hover {
-        background-color: #0284c7;
+        background-color: #f1f5f9;
+        border-color: #1e3a8a;
+        color: #1e3a8a !important;
+    }
+    /* ★ 選択された会社ボタン（公式発表と揃えた濃紺 #1e3a8a・白文字） */
+    .slim-btn.selected-btn {
+        background-color: #1e3a8a !important;
         color: #ffffff !important;
-        border-color: #0284c7;
-        text-decoration: none;
+        border-color: #1e3a8a !important;
+        font-weight: 700 !important;
+        box-shadow: 0 1px 3px rgba(30, 58, 138, 0.35) !important;
     }
     .link-action-btn {
         display: inline-flex;
@@ -1259,9 +1299,9 @@ st.markdown(
         gap: 4px;
         margin-top: 6px;
         padding: 4px 12px;
-        background-color: rgba(2, 132, 199, 0.08);
-        color: #0284c7 !important;
-        border: 1px solid rgba(2, 132, 199, 0.35);
+        background-color: rgba(30, 58, 138, 0.08);
+        color: #1e3a8a !important;
+        border: 1px solid rgba(30, 58, 138, 0.35);
         border-radius: 6px;
         font-size: 0.82em;
         font-weight: 600;
@@ -1269,9 +1309,9 @@ st.markdown(
         transition: all 0.15s ease;
     }
     .link-action-btn:hover {
-        background-color: #0284c7;
+        background-color: #1e3a8a;
         color: #ffffff !important;
-        border-color: #0284c7;
+        border-color: #1e3a8a;
         text-decoration: none;
     }
     @media (max-width: 768px) {
@@ -1289,27 +1329,33 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-def make_slim_btn_html(comp_list, prefix):
-    return "".join([f"<a href='#{prefix}-{c['id']}' class='slim-btn'>{c['name']}</a>" for c in comp_list])
+# ★ ボタン生成：選択されている会社は .selected-btn（濃紺・白文字）を付与
+def make_company_filter_btn_html(comp_list):
+    html_pieces = []
+    for c in comp_list:
+        is_sel = c["id"] in st.session_state.selected_filter_companies
+        cls = "slim-btn selected-btn" if is_sel else "slim-btn"
+        html_pieces.append(f"<a href='?toggle_comp={c['id']}' target='_self' class='{cls}'>{c['name']}</a>")
+    return "".join(html_pieces)
 
 jump_html = f"""
 <div class="slim-jump-container">
   <div class="slim-jump-row">
     <div class="slim-label label-jr">🚆 JR</div>
     <div class="slim-btn-wrapper">
-      {make_slim_btn_html(jr_list, 'jr')}
+      {make_company_filter_btn_html(jr_list)}
     </div>
   </div>
   <div class="slim-jump-row">
     <div class="slim-label label-private">🚇 私鉄</div>
     <div class="slim-btn-wrapper">
-      {make_slim_btn_html(private_list, 'private')}
+      {make_company_filter_btn_html(private_list)}
     </div>
   </div>
   <div class="slim-jump-row">
     <div class="slim-label label-kintetsu">🏢 近鉄グループ</div>
     <div class="slim-btn-wrapper">
-      {make_slim_btn_html(kintetsu_list, 'kintetsu')}
+      {make_company_filter_btn_html(kintetsu_list)}
     </div>
   </div>
 </div>
@@ -1318,11 +1364,10 @@ jump_html = f"""
 st.markdown(jump_html, unsafe_allow_html=True)
 
 # ==========================================
-# 8. 結果の描画
+# 8. 結果の描画（選択された会社のみ記事表示／他社は会社名のみ）
 # ==========================================
 for group_prefix, group_title, comp_list in render_groups:
     st.write("<br>", unsafe_allow_html=True)
-    # ★ 見出しが画面左上・最上部にぴったり位置するように scroll-margin-top を調整
     st.markdown(f"<div id='sec-{group_prefix}' style='scroll-margin-top: 15px;'></div>", unsafe_allow_html=True)
     st.markdown(f"## 【 {group_title} 】")
     st.divider()
@@ -1350,31 +1395,41 @@ for group_prefix, group_title, comp_list in render_groups:
 
         main_url = comp["urls"][0]
         anchor_id = f"{group_prefix}-{comp['id']}"
-        is_hidden = comp["id"] in st.session_state.hidden_companies
+        
+        # ★ フィルター判定：1つでもボタンが押されている場合、選ばれなかった会社は記事非表示（会社名のみ）
+        is_manually_hidden = comp["id"] in st.session_state.hidden_companies
+        is_filtered_out = has_filter and (comp["id"] not in st.session_state.selected_filter_companies)
+        should_hide_articles = is_manually_hidden or is_filtered_out
 
         h_col1, h_col2 = st.columns([5, 1.3])
         with h_col1:
             st.markdown(
                 f"""
-                <div id='{anchor_id}' style='margin-top: 18px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 3px solid #0284c7; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px;'>
+                <div id='{anchor_id}' style='margin-top: 18px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 3px solid #1e3a8a; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px;'>
                     <span style='font-size: 1.85em; font-weight: 800; color: #1e293b; line-height: 1.2;'>🏢 {comp['name']}</span>
-                    <a href='{main_url}' target='_blank' rel='noreferrer noopener' style='font-size: 0.9em; font-weight: 600; color: #0284c7; text-decoration: none;'>[公式HP ↗]</a>
+                    <a href='{main_url}' target='_blank' rel='noreferrer noopener' style='font-size: 0.9em; font-weight: 600; color: #1e3a8a; text-decoration: none;'>[公式HP ↗]</a>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
         with h_col2:
             st.write("<div style='margin-top: 22px;'></div>", unsafe_allow_html=True)
-            btn_label = "記事を表示" if is_hidden else "記事を非表示"
-            btn_type = "primary" if is_hidden else "secondary"
+            btn_label = "記事を表示" if should_hide_articles else "記事を非表示"
+            btn_type = "primary" if should_hide_articles else "secondary"
             if st.button(btn_label, key=f"btn_toggle_{group_prefix}_{comp['id']}", type=btn_type, use_container_width=True):
-                if is_hidden:
-                    st.session_state.hidden_companies.remove(comp["id"])
+                if should_hide_articles:
+                    if comp["id"] in st.session_state.hidden_companies:
+                        st.session_state.hidden_companies.remove(comp["id"])
+                    if has_filter and comp["id"] not in st.session_state.selected_filter_companies:
+                        st.session_state.selected_filter_companies.add(comp["id"])
                 else:
                     st.session_state.hidden_companies.add(comp["id"])
+                    if comp["id"] in st.session_state.selected_filter_companies:
+                        st.session_state.selected_filter_companies.remove(comp["id"])
                 st.rerun()
 
-        if is_hidden:
+        # 会社名のみ表示（記事はスキップ）
+        if should_hide_articles:
             st.write("")
             continue
 
@@ -1432,11 +1487,9 @@ for group_prefix, group_title, comp_list in render_groups:
                             unsafe_allow_html=True,
                         )
 
-                        # 一般ニュースのみ概要（主な内容）を表示
                         if not is_official and item.get("summary"):
                             st.write(f"**主な内容:** {item['summary']}")
 
-                        # 掲載ボタン
                         st.markdown(
                             f"<a href='{action_link}' target='_blank' rel='noreferrer noopener' class='link-action-btn'>🔗 {action_caption}</a>",
                             unsafe_allow_html=True,
