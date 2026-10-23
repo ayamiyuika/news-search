@@ -457,7 +457,7 @@ COMPANY_POOL = {
         ],
         "query": '"近鉄バス"',
     },
-    # ★ 奈良交通：完全一致フレーズ検索で警察の事故WeeklyNewsの誤爆を根絶
+    # ★ 奈良交通：完全一致クエリ
     "nara-kotsu": {
         "id": "nara-kotsu",
         "name": "奈良交通",
@@ -679,17 +679,20 @@ def clean_surrounding_html(surrounding):
     return surrounding
 
 
-# ★ 一般ニュースの概要（summary）から無関係な広告・他社PR・問い合わせゴミを徹底除去
+# ★ 一般ニュース概要のクレンジング（合唱団、プレゼント、招待券、他社PR等のノイズを徹底排除）
 def clean_news_summary(summary, title, company_name):
     clean = re.sub(r"<[^>]+>", " ", summary)
     clean = html.unescape(clean)
     clean = re.sub(r"\s+", " ", clean).strip()
 
-    # 他社PR（WriteVideo等）や問い合わせ電話番号だけのノイズを検知
-    if any(ng in clean for ng in ["【新機能】", "WriteVideo", "プレスリリース *", "TEL：", "年中無休", "お問合せ 一般のお客様", "お問い合わせ先"]):
+    noise_terms = [
+        "招待券", "プレゼント", "懸賞", "合唱団", "定期演奏会",
+        "【新機能】", "writevideo", "プレスリリース *",
+        "tel：", "年中無休", "お問合せ 一般のお客様", "お問い合わせ先", "チケット"
+    ]
+    if any(ng in clean.lower() for ng in noise_terms):
         return f"{company_name}に関する最新の報道・ニュースです。詳細は掲載ページをご確認ください。"
 
-    # ナビゲーション記号や最新のニュースゴミを除去
     clean = re.sub(r'[\d\s\.\»\«\>]+最新のニュース.*', '', clean)
     clean = clean.strip()
 
@@ -853,7 +856,6 @@ def fetch_official_releases(company_info, max_days_back=21):
 
                 clean_t = clean_leading_date(clean_t)
 
-                # ★ 奈良交通の「総合路線バス」「臨時バス」等の接頭辞を除去してタイトルをスッキリさせる
                 if company_info["id"] == "nara-kotsu":
                     clean_t = re.sub(r'^(?:総合路線バス|路線バス|臨時バス|高速バス|貸切バス|観光バス|お知らせ|プレスリリース)+', '', clean_t).strip()
 
@@ -973,19 +975,29 @@ def fetch_general_news(query, company_name, max_days_back=21):
             clean_desc = html.unescape(clean_desc)
             clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
 
-            combined_text = clean_title + " " + clean_desc
+            combined_text = (clean_title + " " + clean_desc).lower()
 
-            # ★ 奈良交通をはじめ、警察の事故WeeklyNewsや事件逮捕を確実に除外
-            if any(ng in combined_text for ng in ["警察Weekly", "県警Weekly", "現行犯逮捕", "酒酔い運転", "ひき逃げ", "安全運転管理者協会", "死亡事故"]):
+            # ★ ノイズキーワード（合唱団、プレゼント、招待券、警察Weekly等）を含む記事を完全遮断
+            noise_keywords = [
+                "招待券", "プレゼント", "懸賞", "合唱団", "定期演奏会",
+                "警察weekly", "県警weekly", "現行犯逮捕", "酒酔い運転", "ひき逃げ",
+                "安全運転管理者", "死亡事故", "容疑で逮捕", "書類送検"
+            ]
+            if any(ng in combined_text for ng in noise_keywords):
                 continue
 
-            # ★ 会社名がタイトルか概要に一度も含まれていない場合は無関係として除外
-            clean_comp = company_name.replace("（", "").replace("）", "")
-            comp_keywords = [clean_comp]
-            if "・" in clean_comp:
-                comp_keywords.extend(clean_comp.split("・"))
-            if not any(kw in combined_text for kw in comp_keywords):
-                continue
+            # ★ 奈良交通などアクセス情報で言及されやすい企業は「タイトルに会社名必須」
+            strict_companies = ["奈良交通", "近鉄バス", "三重交通", "海遊館", "志摩スペイン村", "あべのハルカス美術館"]
+            if company_name in strict_companies:
+                if company_name not in clean_title:
+                    continue
+            else:
+                clean_comp = company_name.replace("（", "").replace("）", "")
+                comp_keywords = [clean_comp]
+                if "・" in clean_comp:
+                    comp_keywords.extend(clean_comp.split("・"))
+                if not any(kw.lower() in combined_text for kw in comp_keywords):
+                    continue
 
             # ★ 概要をクレンジング（他社PR一覧・電話番号などのゴミを除去）
             summary = clean_news_summary(clean_desc, clean_title, company_name)
@@ -1035,10 +1047,10 @@ def fetch_general_news(query, company_name, max_days_back=21):
 
 
 # ==========================================
-# 4. 社別データキャッシュエンジン（1時間保持）
+# 4. 社別データキャッシュエンジン（キャッシュキー自動更新で古い汚染キャッシュを強制クリア）
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_clean_nara_fixed"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
