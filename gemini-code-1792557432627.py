@@ -129,6 +129,7 @@ COMPANY_POOL = {
         "official_domains": ["jrkyushu.co.jp"],
         "urls": [
             "https://www.jrkyushu.co.jp/news/release/index.html",
+            "https://www.jrkyushu.co.jp/news/",
             "https://www.jrkyushu.co.jp/",
         ],
         "query": "JR九州",
@@ -153,6 +154,7 @@ COMPANY_POOL = {
         "urls": [
             "https://www.seiburailway.jp/newsroom/news/",
             "https://www.seibuholdings.co.jp/news/",
+            "https://www.seiburailway.jp/",
         ],
         "query": "西武鉄道 OR 西武ホールディングス",
     },
@@ -186,6 +188,7 @@ COMPANY_POOL = {
         "official_domains": ["keio.co.jp"],
         "urls": [
             "https://www.keio.co.jp/news/update/news_release/",
+            "https://www.keio.co.jp/news/update/index.html",
             "https://www.keio.co.jp/",
         ],
         "query": "京王電鉄",
@@ -220,6 +223,7 @@ COMPANY_POOL = {
         "official_domains": ["keikyu.co.jp"],
         "urls": [
             "https://www.keikyu.co.jp/company/news/",
+            "https://www.keikyu.co.jp/report/",
             "https://www.keikyu.co.jp/",
         ],
         "query": "京浜急行電鉄 OR 京急",
@@ -232,6 +236,7 @@ COMPANY_POOL = {
         "urls": [
             "https://www.sotetsu.co.jp/pressrelease/",
             "https://www.sotetsu.co.jp/news/",
+            "https://www.sotetsu.co.jp/",
         ],
         "query": "相模鉄道 OR 相鉄ホールディングス",
     },
@@ -278,6 +283,7 @@ COMPANY_POOL = {
         "urls": [
             "https://subway.osakametro.co.jp/news/news_release/",
             "https://subway.osakametro.co.jp/news/",
+            "https://subway.osakametro.co.jp/",
         ],
         "query": "大阪メトロ OR \"Osaka Metro\"",
     },
@@ -388,7 +394,6 @@ COMPANY_POOL = {
         ],
         "query": '"近鉄エクスプレス"',
     },
-    # ★ 近鉄百貨店：正しいリリース一覧URL（whatsnew.html）を設定
     "kintetsu-dept": {
         "id": "kintetsu-dept",
         "name": "近鉄百貨店",
@@ -412,26 +417,27 @@ COMPANY_POOL = {
         ],
         "query": '"近鉄リテーリング"',
     },
-    # ★ 近商ストア：正しい公式ドメイン（kinshostore.co.jp）と一覧URLを設定
     "kinsho-store": {
         "id": "kinsho-store",
         "name": "近商ストア",
         "top_url": "https://www.kinshostore.co.jp/",
-        "official_domains": ["kinshostore.co.jp"],
+        "official_domains": ["kinsho-store.co.jp", "kinshostore.co.jp"],
         "urls": [
-            "https://www.kinshostore.co.jp/information/",
+            "https://www.kinshostore.co.jp/html/news.php",
+            "https://www.kinsho-store.co.jp/html/news.php",
             "https://www.kinshostore.co.jp/",
+            "https://www.kinsho-store.co.jp/",
         ],
         "query": '"近商ストア"',
     },
-    # ★ 近鉄・都ホテルズ：ご指示通り「PRESS RELEASE」と「NEWS / お知らせ」の両方を確実に巡回
     "miyako-hotels": {
         "id": "miyako-hotels",
         "name": "近鉄・都ホテルズ",
         "top_url": "https://www.miyakohotels.ne.jp/",
         "official_domains": ["miyakohotels.ne.jp"],
         "urls": [
-            "https://www.miyakohotels.ne.jp/pressrelease/",
+            "https://www.miyakohotels.ne.jp/newsrelease/",
+            "https://www.miyakohotels.ne.jp/information/",
             "https://www.miyakohotels.ne.jp/",
         ],
         "query": '"近鉄・都ホテルズ" OR "都ホテルズ＆リゾーツ" OR "都ホテル"',
@@ -488,8 +494,8 @@ COMPANY_POOL = {
         "top_url": "https://parque-net.com/",
         "official_domains": ["parque-net.com"],
         "urls": [
-            "https://parque-net.com/press/",
-            "https://parque-net.com/blog/?cat=7",
+            "https://www.parque-net.com/press/",
+            "https://www.parque-net.com/blog/?cat=7",
         ],
         "query": '"志摩スペイン村" OR "パルケエスパーニャ"',
     },
@@ -515,16 +521,15 @@ COMPANY_POOL = {
         ],
         "query": '"奈良交通"',
     },
-    # ★ 三交ホールディングス：グループニュース一覧（sanco.co.jp/allnews/）を網羅
     "sanco-hd": {
         "id": "sanco-hd",
         "name": "三交ホールディングス",
         "top_url": "https://holdings.sanco.co.jp/",
         "official_domains": ["holdings.sanco.co.jp", "sanco.co.jp"],
         "urls": [
+            "https://holdings.sanco.co.jp/news/",
             "https://www.sanco.co.jp/allnews/",
             "https://www.sanco.co.jp/other/newsrelease/",
-            "https://holdings.sanco.co.jp/",
         ],
         "query": '"三交ホールディングス" OR "三重交通グループホールディングス"',
     },
@@ -718,13 +723,10 @@ def clean_leading_date(title):
 
 
 def clean_extracted_title(raw_title, company_info):
-    """タイトル内に入り込んだ余分な日付・カテゴリタグを綺麗に除去"""
     t = re.sub(r"<[^>]+>", " ", raw_title)
     t = html.unescape(t)
-    # 先頭の日付を除去
     t = clean_leading_date(t)
-    # 各種バッジやカテゴリ名の除去
-    t = re.sub(r"^(?:東急電鉄|東京メトロ|京急電鉄|近畿日本鉄道|プレスリリース|ニュースリリース|お知らせ|PRESS\s*RELEASE|NEWS|重要|電鉄|グループ|コーポレート|商品・サービス|ピックアップ・キャンペーン)\s*", "", t.strip(), flags=re.IGNORECASE)
+    t = re.sub(r"^(?:東急電鉄|東京メトロ|京急電鉄|近畿日本鉄道|プレスリリース|ニュースリリース|お知らせ|PRESS\s*RELEASE|NEWS|重要|電鉄|グループ)\s*", "", t.strip(), flags=re.IGNORECASE)
     t = clean_leading_date(t)
     if company_info["id"] == "nara-kotsu":
         t = re.sub(r'^(?:総合路線バス|路線バス|臨時バス|高速バス|貸切バス|観光バス)+', '', t).strip()
@@ -754,10 +756,9 @@ def clean_news_summary(summary, title, company_name):
 
 
 # ==========================================
-# 3. 高精度ブロックパーサー＆自動リカバリー巡回エンジン
+# 3. 実証済み高精度スクレイピング（自動リカバリー付き）
 # ==========================================
 def fetch_url_html(url, referer, headers, ctx):
-    """HTMLを取得・自動解凍・デコードする関数"""
     try:
         h = dict(headers)
         if referer:
@@ -787,7 +788,8 @@ def fetch_url_html(url, referer, headers, ctx):
 
 def parse_releases_from_html(html_text, final_base_url, company_info, cutoff_date, today, current_year, seen_urls):
     """
-    HTMLからブロック単位（li, dl, tr, article, item等）で日付と記事を1対1で確実に抽出
+    以前のバージョンで動作実績のある全走査方式に、
+    東急（タグ内日付）対応を加えた確実なパーサー
     """
     results = []
     allowed_domains = company_info.get("official_domains", [])
@@ -828,88 +830,126 @@ def parse_releases_from_html(html_text, final_base_url, company_info, cutoff_dat
 
     clean_html = re.sub(r"<script.*?>.*?</script>", "", html_text, flags=re.DOTALL | re.IGNORECASE)
     clean_html = re.sub(r"<style.*?>.*?</style>", "", clean_html, flags=re.DOTALL | re.IGNORECASE)
-    # 検索窓や過去アーカイブのドロップダウンをマスク
-    clean_html = re.sub(r"<form.*?>.*?</form>", " ", clean_html, flags=re.DOTALL | re.IGNORECASE)
-    clean_html = re.sub(r"<select.*?>.*?</select>", " ", clean_html, flags=re.DOTALL | re.IGNORECASE)
 
-    # ★ 構造化ブロック（li, dl, tr, article, ニュースアイテムクラス）ごとに正確に切り出し
-    block_patterns = [
-        r'<(?:li|dl|tr|article|div\s+[^>]*?class=["\'][^"\']*(?:item|news|release|press|list)[^"\']*["\'])[^>]*>(.*?)</(?:li|dl|tr|article|div)>'
-    ]
+    # 以前のバージョンと同様、ページ全体のリンクを走査
+    a_matches = list(
+        re.finditer(
+            r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>(.*?)</a>',
+            clean_html,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+    )
 
-    for pat in block_patterns:
-        for b_match in re.finditer(pat, clean_html, flags=re.DOTALL | re.IGNORECASE):
-            block_content = b_match.group(1)
-            # ブロック内のリンクを探索
-            a_matches = list(re.finditer(r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', block_content, flags=re.DOTALL | re.IGNORECASE))
-            if not a_matches:
+    for m in a_matches:
+        raw_href = m.group(1).strip().strip("'\"").replace(" ", "").replace("\r", "").replace("\n", "").replace("\t", "")
+        if not raw_href or raw_href.startswith(("javascript:", "#", "mailto:", "tel:")):
+            continue
+
+        full_url = urllib.parse.urljoin(final_base_url, raw_href)
+        if full_url in seen_urls:
+            continue
+
+        if re.search(r'/(?:20[01]\d|202[0-3])/', full_url):
+            continue
+
+        parsed_u = urllib.parse.urlparse(full_url)
+        if not any(d in parsed_u.netloc.lower() for d in allowed_domains if d):
+            continue
+
+        if company_info["id"] == "hanshin" and "hankyu-hanshin.co.jp" in parsed_u.netloc.lower():
+            surrounding_check = clean_html[max(0, m.start() - 200) : min(len(clean_html), m.end() + 200)]
+            if "阪急" in surrounding_check and "阪神" not in surrounding_check:
                 continue
 
-            # ブロック内から日付を取得
-            found_date = parse_date_text(block_content, current_year)
-            if not found_date or not (cutoff_date <= found_date <= today):
-                continue
+        inside_html = m.group(2)
+        start_pos, end_pos = m.start(), m.end()
 
-            for a_m in a_matches:
-                raw_href = a_m.group(1).strip().strip("'\"").replace(" ", "").replace("\r", "").replace("\n", "").replace("\t", "")
-                if not raw_href or raw_href.startswith(("javascript:", "#", "mailto:", "tel:")):
+        # ★ 日付判定：
+        # 1. リンク内包日付（東急形式）をチェック
+        found_date = parse_date_text(inside_html, current_year)
+        # 2. リンク直前（メトロ、近鉄、南海等のdt/dd、tr/td形式）をチェック
+        if not found_date:
+            before_html = clean_html[max(0, start_pos - 450) : start_pos]
+            found_date = parse_date_text(before_html, current_year, prefer_first=False)
+        # 3. リンク直後をチェック
+        if not found_date:
+            after_html = clean_html[end_pos : min(len(clean_html), end_pos + 300)]
+            found_date = parse_date_text(after_html, current_year, prefer_first=True)
+
+        if not found_date or not (cutoff_date <= found_date <= today):
+            continue
+
+        surrounding = clean_html[max(0, start_pos - 400) : min(len(clean_html), end_pos + 300)]
+        clean_t = clean_extracted_title(inside_html, company_info)
+
+        # リンク内にタイトル文字がない（アイコン等）の場合は周辺タグから補完
+        if clean_t in GENERIC_LINK_TEXTS or len(clean_t) < 5 or clean_t == "最新のニュース":
+            h_m = re.findall(r"<h[1-5][^>]*>(.*?)</h[1-5]>", surrounding, flags=re.DOTALL | re.IGNORECASE)
+            if h_m:
+                clean_t = clean_extracted_title(h_m[-1], company_info)
+            else:
+                comb = re.sub(r"<[^>]+>", " ", surrounding)
+                comb = html.unescape(comb)
+                lines = [line.strip() for line in comb.split() if len(line.strip()) > 6 and line.strip() not in GENERIC_LINK_TEXTS and line.strip() != "最新のニュース"]
+                if lines:
+                    clean_t = clean_extracted_title(lines[0], company_info)
+                else:
                     continue
 
-                full_url = urllib.parse.urljoin(final_base_url, raw_href)
-                if full_url in seen_urls:
-                    continue
+        if clean_t in GENERIC_LINK_TEXTS or len(clean_t) < 5 or clean_t == "最新のニュース":
+            continue
 
-                if re.search(r'/(?:20[01]\d|202[0-3])/', full_url):
-                    continue
+        if any(bad in clean_t for bad in ['="', "='", "class=", "id=", "style=", "headerMenu", "<", ">"]):
+            continue
 
-                parsed_u = urllib.parse.urlparse(full_url)
-                if not any(d in parsed_u.netloc.lower() for d in allowed_domains if d):
-                    continue
+        if any(ng in clean_t for ng in ["営業時間", "営業カレンダー", "本日の営業時間"]):
+            continue
 
-                inside_html = a_m.group(2)
-                raw_t = clean_extracted_title(inside_html, company_info)
+        pdf_m = re.search(r'href=["\']([^"\']+\.pdf(?:\?[^"\']*)?)["\']', surrounding, re.IGNORECASE)
+        detected_pdf = urllib.parse.urljoin(final_base_url, pdf_m.group(1).strip()) if pdf_m else None
 
-                if len(raw_t) < 5 or raw_t in GENERIC_LINK_TEXTS:
-                    # リンク内にタイトルがない場合、ブロック全体からテキストを抽出
-                    cand_t = clean_extracted_title(block_content, company_info)
-                    if len(cand_t) >= 5 and cand_t not in GENERIC_LINK_TEXTS:
-                        raw_t = cand_t
+        page_url = full_url
+        pdf_url = detected_pdf
 
-                if len(raw_t) < 5 or raw_t in GENERIC_LINK_TEXTS or any(bad in raw_t for bad in ['="', "='", "class=", "id=", "<", ">"]):
-                    continue
+        if full_url.lower().split('?')[0].endswith(".pdf"):
+            pdf_url = full_url
+            page_m = re.search(r'href=["\']([^"\']*(?:page_|article/|detail/)[^"\']*\.html)["\']', surrounding, re.IGNORECASE)
+            if page_m:
+                page_url = urllib.parse.urljoin(final_base_url, page_m.group(1).strip())
 
-                # PDF検知
-                pdf_m = re.search(r'href=["\']([^"\']+\.pdf(?:\?[^"\']*)?)["\']', block_content, re.IGNORECASE)
-                detected_pdf = urllib.parse.urljoin(final_base_url, pdf_m.group(1).strip()) if pdf_m else None
+        if company_info["id"] == "jr-west" and not pdf_url and page_url.endswith(".html"):
+            try:
+                sub_req = urllib.request.Request(page_url, headers=headers)
+                with urllib.request.urlopen(sub_req, context=ctx, timeout=3) as sub_res:
+                    sub_b = sub_res.read()
+                    sub_h = decode_html_bytes(sub_b, url=page_url)
+                    inner_pdf_m = re.search(r'href=["\']([^"\']+\.pdf)["\']', sub_h, re.IGNORECASE)
+                    if inner_pdf_m:
+                        pdf_url = urllib.parse.urljoin(page_url, inner_pdf_m.group(1).strip())
+            except Exception:
+                pass
 
-                page_url = full_url
-                pdf_url = detected_pdf
-                if full_url.lower().split('?')[0].endswith(".pdf"):
-                    pdf_url = full_url
+        seen_urls.add(full_url)
+        is_pdf = bool(pdf_url or full_url.lower().split('?')[0].endswith(".pdf"))
 
-                seen_urls.add(full_url)
-                is_pdf = bool(pdf_url or full_url.lower().split('?')[0].endswith(".pdf"))
-
-                results.append({
-                    "date": found_date,
-                    "type": "公式発表",
-                    "title": raw_t[:130],
-                    "url": page_url,
-                    "pdf_url": pdf_url,
-                    "source": company_info["name"] + " 公式HP",
-                    "is_pdf": is_pdf,
-                })
+        results.append({
+            "date": found_date,
+            "type": "公式発表",
+            "title": clean_t[:130],
+            "url": page_url,
+            "pdf_url": pdf_url,
+            "source": company_info["name"] + " 公式HP",
+            "is_pdf": is_pdf,
+        })
 
     return results
 
 
 def fetch_official_releases(company_info, max_days_back=21):
     """
-    公式発表を取得。
-    0件（なし）の場合は、自律リカバリープログラムが自動発動：
-    1. 既定URLの巡回
-    2. トップページからのリリース生リンク自動探索
-    3. 公式ドメインインデックス（site:ドメイン）からの救済探索
+    各社の公式発表を取得。
+    「なし」となった場合は自動修復機能が即座に自動発動し、トップページや
+    サイト内インデックスから最新リリースを再探索して取得
     """
     results = []
     seen_urls = set()
@@ -929,22 +969,22 @@ def fetch_official_releases(company_info, max_days_back=21):
         "Upgrade-Insecure-Requests": "1",
     }
 
-    # 1. 既定の巡回先URLを順次解析
+    # 1. 登録済みURLを巡回
     for url in company_info["urls"]:
         html_text, final_url = fetch_url_html(url, company_info.get("top_url", url), headers, ctx)
         if html_text:
             items = parse_releases_from_html(html_text, final_url, company_info, cutoff_date, today, current_year, seen_urls)
             results.extend(items)
 
-    # ★ 2. 自動リカバリー機能（ステップ2）：結果が「0件」の場合、トップページから生リンクを自動再確認
+    # ★ 2. 自動修復機能（ステップ1）：0件の場合、トップページから生リンクを自動再確認
     if not results and company_info.get("top_url"):
         top_html, final_top_url = fetch_url_html(company_info["top_url"], "", headers, ctx)
         if top_html:
-            # トップページ内の新着ブロックを解析
+            # トップページに掲載されている新着枠を直接パース
             direct_items = parse_releases_from_html(top_html, final_top_url, company_info, cutoff_date, today, current_year, seen_urls)
             results.extend(direct_items)
 
-            # 「ニュースリリース/PRESS RELEASE/NEWS」リンクを自動探索
+            # 「ニュースリリース/PRESS RELEASE/NEWS/広報」リンクを自動探索
             if not results:
                 pat = r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>(?:.*?)(?:ニュースリリース|プレスリリース|広報発表|新着情報|NEWS|PRESS\s*RELEASE)(?:.*?)</a>'
                 cand_urls = []
@@ -961,7 +1001,7 @@ def fetch_official_releases(company_info, max_days_back=21):
                         sub_items = parse_releases_from_html(sub_html, sub_final, company_info, cutoff_date, today, current_year, seen_urls)
                         results.extend(sub_items)
 
-    # ★ 3. 自動リカバリー機能（ステップ3）：WAFやJS描画でまだ0件の場合、公式ドメインのインデックスから救済取得
+    # ★ 3. 自動修復機能（ステップ2）：WAFやJS描画等で依然0件の場合、公式ドメインインデックスから救済取得
     if not results:
         main_domain = company_info["official_domains"][0]
         rescue_query = f"site:{main_domain} {company_info['name']}"
@@ -1148,7 +1188,7 @@ def fetch_general_news(query, company_name, max_days_back=21):
 # 4. 社別データキャッシュエンジン（キャッシュ自動更新キー）
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_auto_recovery_final_fixed"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_proven_stable_restored_v1"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
