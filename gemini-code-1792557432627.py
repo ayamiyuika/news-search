@@ -765,6 +765,9 @@ def fetch_url_html(url, referer, headers, ctx):
         h = dict(headers)
         if referer:
             h["Referer"] = referer
+        else:
+            p = urllib.parse.urlparse(url)
+            h["Referer"] = f"{p.scheme}://{p.netloc}/"
         req = urllib.request.Request(url, headers=h)
         with urllib.request.urlopen(req, context=ctx, timeout=8) as res:
             raw_bytes = res.read()
@@ -790,7 +793,7 @@ def fetch_url_html(url, referer, headers, ctx):
 
 def parse_releases_from_html(html_text, final_base_url, company_info, cutoff_date, today, current_year, seen_urls):
     """
-    以前の安定バージョンで全社が正常に拾えていた全走査方式を完全復元。
+    以前の安定バージョンで全社が正常に拾えていた全走査方式を完全保護。
     東急などの「リンク内包型」も同時にキャッチできるよう安全に拡張。
     """
     results = []
@@ -866,7 +869,7 @@ def parse_releases_from_html(html_text, final_base_url, company_info, cutoff_dat
         inside_html = m.group(2)
         start_pos, end_pos = m.start(), m.end()
 
-        # ★ 日付判定（他社を壊さず東急も拾える安全な2段階判定）：
+        # ★ 日付判定（他社を壊さず東急・京急等も拾える安全な2段階判定）：
         # 1. リンク内包日付（東急などの構造）
         found_date = parse_date_text(inside_html, current_year)
         # 2. リンク手前（メトロ、近鉄、南海、JR東海等のdt/dd、tr/td構造）
@@ -948,8 +951,8 @@ def parse_releases_from_html(html_text, final_base_url, company_info, cutoff_dat
 
 def fetch_official_releases(company_info, max_days_back=21):
     """
-    公式発表を取得。
-    「なし」となった場合は自律修復機能が自動発動し、トップページや
+    各社の公式発表を取得。
+    「なし」となった場合は自動修復機能が即座に自動発動し、トップページや
     サイト内インデックスから最新リリースを再探索して取得
     """
     results = []
@@ -959,6 +962,7 @@ def fetch_official_releases(company_info, max_days_back=21):
     current_year = today.year
 
     ctx = ssl._create_unverified_context()
+    # 完全なブラウザ偽装ヘッダー（WAFによるアクセス拒否を根絶）
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -967,6 +971,10 @@ def fetch_official_releases(company_info, max_days_back=21):
         "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124"',
         "Sec-Ch-Ua-Mobile": "?0",
         "Sec-Ch-Ua-Platform": '"Windows"',
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-User": "?1",
         "Upgrade-Insecure-Requests": "1",
     }
 
@@ -977,7 +985,7 @@ def fetch_official_releases(company_info, max_days_back=21):
             items = parse_releases_from_html(html_text, final_url, company_info, cutoff_date, today, current_year, seen_urls)
             results.extend(items)
 
-    # ★ 2. 自動修復機能（ステップ1）：結果が0件の場合、トップページから生リンクを自動再確認
+    # ★ 2. 自動修復機能（ステップ1）：0件の場合、トップページから生リンクを自動再確認
     if not results and company_info.get("top_url"):
         top_html, final_top_url = fetch_url_html(company_info["top_url"], "", headers, ctx)
         if top_html:
@@ -1187,7 +1195,7 @@ def fetch_general_news(query, company_name, max_days_back=21):
 # 4. 社別データキャッシュエンジン（キャッシュ完全リセット）
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_keisei_fixed_rock_solid_v2"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_rock_solid_legacy_protected_v3"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
