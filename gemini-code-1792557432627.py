@@ -67,6 +67,7 @@ COMPANY_POOL = {
     "jr-hokkaido": {
         "id": "jr-hokkaido",
         "name": "JR北海道",
+        "top_url": "https://www.jrhokkaido.co.jp/",
         "official_domains": ["jrhokkaido.co.jp"],
         "urls": [
             "https://www.jrhokkaido.co.jp/CM/info/press/presstop.html",
@@ -77,10 +78,11 @@ COMPANY_POOL = {
     "jr-east": {
         "id": "jr-east",
         "name": "JR東日本",
+        "top_url": "https://www.jreast.co.jp/",
         "official_domains": ["jreast.co.jp", "prtimes.jp"],
         "urls": [
-            "https://www.jreast.co.jp/press/2026/",
             "https://www.jreast.co.jp/press/",
+            "https://www.jreast.co.jp/press/2026/",
             "https://prtimes.jp/main/html/searchrlp/company_id/17557",
         ],
         "query": "JR東日本",
@@ -88,6 +90,7 @@ COMPANY_POOL = {
     "jr-central": {
         "id": "jr-central",
         "name": "JR東海",
+        "top_url": "https://jr-central.co.jp/",
         "official_domains": ["jr-central.co.jp"],
         "urls": [
             "https://jr-central.co.jp/news/release/",
@@ -99,6 +102,7 @@ COMPANY_POOL = {
     "jr-west": {
         "id": "jr-west",
         "name": "JR西日本",
+        "top_url": "https://www.westjr.co.jp/",
         "official_domains": ["westjr.co.jp"],
         "urls": [
             "https://www.westjr.co.jp/press/article/",
@@ -109,6 +113,7 @@ COMPANY_POOL = {
     "jr-shikoku": {
         "id": "jr-shikoku",
         "name": "JR四国",
+        "top_url": "https://www.jr-shikoku.co.jp/",
         "official_domains": ["jr-shikoku.co.jp"],
         "urls": [
             "https://www.jr-shikoku.co.jp/03_news/press/",
@@ -119,6 +124,7 @@ COMPANY_POOL = {
     "jr-kyushu": {
         "id": "jr-kyushu",
         "name": "JR九州",
+        "top_url": "https://www.jrkyushu.co.jp/",
         "official_domains": ["jrkyushu.co.jp"],
         "urls": [
             "https://www.jrkyushu.co.jp/news/release/index.html",
@@ -130,13 +136,18 @@ COMPANY_POOL = {
     "tobu": {
         "id": "tobu",
         "name": "東武鉄道",
+        "top_url": "https://www.tobu.co.jp/",
         "official_domains": ["tobu.co.jp"],
-        "urls": ["https://www.tobu.co.jp/newsrelease/"],
+        "urls": [
+            "https://www.tobu.co.jp/newsrelease/",
+            "https://www.tobu.co.jp/",
+        ],
         "query": "東武鉄道",
     },
     "seibu": {
         "id": "seibu",
         "name": "西武鉄道（西武HD含む）",
+        "top_url": "https://www.seiburailway.jp/",
         "official_domains": ["seiburailway.jp", "seibuholdings.co.jp"],
         "urls": [
             "https://www.seiburailway.jp/newsroom/news/",
@@ -147,6 +158,7 @@ COMPANY_POOL = {
     "keisei": {
         "id": "keisei",
         "name": "京成電鉄",
+        "top_url": "https://www.keisei.co.jp/",
         "official_domains": ["keisei.co.jp"],
         "urls": [
             "https://www.keisei.co.jp/keisei/kouhou/news/index.php",
@@ -157,6 +169,7 @@ COMPANY_POOL = {
     "tokyo-metro": {
         "id": "tokyo-metro",
         "name": "東京メトロ",
+        "top_url": "https://www.tokyometro.jp/",
         "official_domains": ["tokyometro.jp"],
         "urls": [
             "https://www.tokyometro.jp/news/index.html",
@@ -168,16 +181,19 @@ COMPANY_POOL = {
     "keio": {
         "id": "keio",
         "name": "京王電鉄",
+        "top_url": "https://www.keio.co.jp/",
         "official_domains": ["keio.co.jp"],
         "urls": [
             "https://www.keio.co.jp/news/update/news_release/",
-            "https://www.keio.co.jp/news/update/index.html",
+            "https://www.keio.co.jp/news/update/news_release/news_release2026/",
+            "https://www.keio.co.jp/",
         ],
         "query": "京王電鉄",
     },
     "odakyu": {
         "id": "odakyu",
         "name": "小田急電鉄",
+        "top_url": "https://www.odakyu.jp/",
         "official_domains": ["odakyu.jp"],
         "urls": [
             "https://www.odakyu.jp/company/about/news/",
@@ -188,6 +204,7 @@ COMPANY_POOL = {
     "tokyu": {
         "id": "tokyu",
         "name": "東急電鉄（東急HD含む）",
+        "top_url": "https://www.tokyu.co.jp/",
         "official_domains": ["tokyu.co.jp"],
         "urls": [
             "https://www.tokyu.co.jp/company/news/",
@@ -199,10 +216,11 @@ COMPANY_POOL = {
     "keikyu": {
         "id": "keikyu",
         "name": "京浜急行電鉄",
+        "top_url": "https://www.keikyu.co.jp/",
         "official_domains": ["keikyu.co.jp"],
         "urls": [
             "https://www.keikyu.co.jp/company/news/",
-            "https://www.keikyu.co.jp/report/",
+            "https://www.keikyu.co.jp/company/news/2026/",
             "https://www.keikyu.co.jp/",
         ],
         "query": "京浜急行電鉄 OR 京急",
@@ -210,6 +228,7 @@ COMPANY_POOL = {
     "sotetsu": {
         "id": "sotetsu",
         "name": "相模鉄道（相鉄HD含む）",
+        "top_url": "https://www.sotetsu.co.jp/",
         "official_domains": ["sotetsu.co.jp"],
         "urls": [
             "https://www.sotetsu.co.jp/pressrelease/",
@@ -220,9 +239,11 @@ COMPANY_POOL = {
     "meitetsu": {
         "id": "meitetsu",
         "name": "名古屋鉄道",
+        "top_url": "https://www.meitetsu.co.jp/",
         "official_domains": ["meitetsu.co.jp"],
         "urls": [
             "https://www.meitetsu.co.jp/profile/news/",
+            "https://www.meitetsu.co.jp/profile/news/2026/",
             "https://www.meitetsu.co.jp/",
         ],
         "query": "名古屋鉄道 OR 名鉄",
@@ -230,6 +251,7 @@ COMPANY_POOL = {
     "nankai": {
         "id": "nankai",
         "name": "南海電気鉄道",
+        "top_url": "https://www.nankai.co.jp/",
         "official_domains": ["nankai.co.jp"],
         "urls": [
             "https://www.nankai.co.jp/news.html",
@@ -241,6 +263,7 @@ COMPANY_POOL = {
     "keihan": {
         "id": "keihan",
         "name": "京阪電気鉄道（京阪HD含む）",
+        "top_url": "https://www.keihan.co.jp/",
         "official_domains": ["keihan.co.jp", "keihan-holdings.co.jp"],
         "urls": [
             "https://www.keihan.co.jp/corporate/release/",
@@ -252,6 +275,7 @@ COMPANY_POOL = {
     "osaka-metro": {
         "id": "osaka-metro",
         "name": "大阪メトロ (Osaka Metro)",
+        "top_url": "https://subway.osakametro.co.jp/",
         "official_domains": ["osakametro.co.jp"],
         "urls": [
             "https://subway.osakametro.co.jp/news/news_release/",
@@ -262,6 +286,7 @@ COMPANY_POOL = {
     "hanshin": {
         "id": "hanshin",
         "name": "阪神電気鉄道",
+        "top_url": "https://www.hanshin.co.jp/",
         "official_domains": ["hanshin.co.jp", "hankyu-hanshin.co.jp"],
         "urls": [
             "https://www.hanshin.co.jp/press/",
@@ -273,6 +298,7 @@ COMPANY_POOL = {
     "hankyu": {
         "id": "hankyu",
         "name": "阪急電鉄",
+        "top_url": "https://www.hankyu.co.jp/",
         "official_domains": ["hankyu.co.jp", "hankyu-hanshin.co.jp"],
         "urls": [
             "https://www.hankyu.co.jp/company/news/index.html",
@@ -284,19 +310,23 @@ COMPANY_POOL = {
     "hankyu-hanshin-hd": {
         "id": "hankyu-hanshin-hd",
         "name": "阪急阪神ホールディングス",
+        "top_url": "https://www.hankyu-hanshin.co.jp/",
         "official_domains": ["hankyu-hanshin.co.jp"],
         "urls": [
             "https://www.hankyu-hanshin.co.jp/release/",
+            "https://www.hankyu-hanshin.co.jp/",
         ],
         "query": "阪急阪神ホールディングス OR \"阪急阪神HD\"",
     },
     "nishitetsu": {
         "id": "nishitetsu",
         "name": "西日本鉄道",
+        "top_url": "https://www.nishitetsu.co.jp/",
         "official_domains": ["nishitetsu.co.jp"],
         "urls": [
             "https://www.nishitetsu.co.jp/ja/news.html",
             "https://www.nishitetsu.co.jp/release/",
+            "https://www.nishitetsu.co.jp/",
         ],
         "query": "西日本鉄道 OR 西鉄",
     },
@@ -304,10 +334,11 @@ COMPANY_POOL = {
     "kintetsu-ghd": {
         "id": "kintetsu-ghd",
         "name": "近鉄GHD",
+        "top_url": "https://www.kintetsu-g-hd.co.jp/",
         "official_domains": ["kintetsu-g-hd.co.jp"],
         "urls": [
-            "https://www.kintetsu-g-hd.co.jp/news-hd/",
             "https://www.kintetsu-g-hd.co.jp/news-kg/",
+            "https://www.kintetsu-g-hd.co.jp/news-hd/",
             "https://www.kintetsu-g-hd.co.jp/",
         ],
         "query": "近鉄グループホールディングス OR 近鉄GHD",
@@ -315,6 +346,7 @@ COMPANY_POOL = {
     "kintetsu-railway": {
         "id": "kintetsu-railway",
         "name": "近畿日本鉄道",
+        "top_url": "https://www.kintetsu.co.jp/",
         "official_domains": ["kintetsu.co.jp"],
         "urls": [
             "https://www.kintetsu.co.jp/all_news/whatsnew.html",
@@ -326,6 +358,7 @@ COMPANY_POOL = {
     "kintetsu-fudosan": {
         "id": "kintetsu-fudosan",
         "name": "近鉄不動産",
+        "top_url": "https://www.kintetsu-re.co.jp/",
         "official_domains": ["kintetsu-re.co.jp"],
         "urls": [
             "https://www.kintetsu-re.co.jp/news/",
@@ -337,6 +370,7 @@ COMPANY_POOL = {
     "abeno-art-museum": {
         "id": "abeno-art-museum",
         "name": "あべのハルカス美術館",
+        "top_url": "https://www.aham.jp/",
         "official_domains": ["aham.jp"],
         "urls": [
             "https://www.aham.jp/news/",
@@ -348,6 +382,7 @@ COMPANY_POOL = {
     "kwe": {
         "id": "kwe",
         "name": "近鉄エクスプレス",
+        "top_url": "https://www.kwe.co.jp/",
         "official_domains": ["kwe.co.jp", "kwe.com"],
         "urls": [
             "https://www.kwe.co.jp/news/",
@@ -358,6 +393,7 @@ COMPANY_POOL = {
     "kintetsu-dept": {
         "id": "kintetsu-dept",
         "name": "近鉄百貨店",
+        "top_url": "https://www.d-kintetsu.co.jp/",
         "official_domains": ["d-kintetsu.co.jp"],
         "urls": [
             "https://www.d-kintetsu.co.jp/corporate/",
@@ -368,6 +404,7 @@ COMPANY_POOL = {
     "kintetsu-retailing": {
         "id": "kintetsu-retailing",
         "name": "近鉄リテーリング",
+        "top_url": "https://knt-rt.co.jp/",
         "official_domains": ["knt-rt.co.jp"],
         "urls": [
             "https://knt-rt.co.jp/news/",
@@ -378,6 +415,7 @@ COMPANY_POOL = {
     "kinsho-store": {
         "id": "kinsho-store",
         "name": "近商ストア",
+        "top_url": "https://www.kinsho-store.co.jp/",
         "official_domains": ["kinsho-store.co.jp"],
         "urls": [
             "https://www.kinsho-store.co.jp/html/news.php",
@@ -388,6 +426,7 @@ COMPANY_POOL = {
     "miyako-hotels": {
         "id": "miyako-hotels",
         "name": "近鉄・都ホテルズ",
+        "top_url": "https://www.miyakohotels.ne.jp/",
         "official_domains": ["miyakohotels.ne.jp"],
         "urls": [
             "https://www.miyakohotels.ne.jp/newsrelease/",
@@ -399,6 +438,7 @@ COMPANY_POOL = {
     "knt-ct": {
         "id": "knt-ct",
         "name": "KNT-CTホールディングス",
+        "top_url": "https://www.kntcthd.co.jp/",
         "official_domains": ["kntcthd.co.jp"],
         "urls": [
             "https://www.kntcthd.co.jp/news/",
@@ -409,6 +449,7 @@ COMPANY_POOL = {
     "knt": {
         "id": "knt",
         "name": "近畿日本ツーリスト",
+        "top_url": "https://corp.knt.co.jp/",
         "official_domains": ["knt.co.jp"],
         "urls": [
             "https://corp.knt.co.jp/ja/release/",
@@ -420,6 +461,7 @@ COMPANY_POOL = {
     "club-tourism": {
         "id": "club-tourism",
         "name": "クラブツーリズム",
+        "top_url": "https://www.club-tourism.co.jp/",
         "official_domains": ["club-tourism.co.jp", "club-t.com"],
         "urls": [
             "https://www.club-tourism.co.jp/jpn/press/",
@@ -431,6 +473,7 @@ COMPANY_POOL = {
     "kaiyukan": {
         "id": "kaiyukan",
         "name": "海遊館",
+        "top_url": "https://www.kaiyukan.com/",
         "official_domains": ["kaiyukan.com"],
         "urls": [
             "https://www.kaiyukan.com/topics/",
@@ -441,6 +484,7 @@ COMPANY_POOL = {
     "shima-spain-village": {
         "id": "shima-spain-village",
         "name": "志摩スペイン村",
+        "top_url": "https://parque-net.com/",
         "official_domains": ["parque-net.com"],
         "urls": [
             "https://www.parque-net.com/press/",
@@ -451,6 +495,7 @@ COMPANY_POOL = {
     "kintetsu-bus": {
         "id": "kintetsu-bus",
         "name": "近鉄バス",
+        "top_url": "https://www.kintetsu-bus.co.jp/",
         "official_domains": ["kintetsu-bus.co.jp"],
         "urls": [
             "https://www.kintetsu-bus.co.jp/news/",
@@ -461,6 +506,7 @@ COMPANY_POOL = {
     "nara-kotsu": {
         "id": "nara-kotsu",
         "name": "奈良交通",
+        "top_url": "https://www.narakotsu.co.jp/",
         "official_domains": ["narakotsu.co.jp"],
         "urls": [
             "https://www.narakotsu.co.jp/news/category/press/",
@@ -471,6 +517,7 @@ COMPANY_POOL = {
     "sanco-hd": {
         "id": "sanco-hd",
         "name": "三交ホールディングス",
+        "top_url": "https://holdings.sanco.co.jp/",
         "official_domains": ["holdings.sanco.co.jp"],
         "urls": [
             "https://holdings.sanco.co.jp/news/",
@@ -481,6 +528,7 @@ COMPANY_POOL = {
     "sanco": {
         "id": "sanco",
         "name": "三重交通",
+        "top_url": "https://www.sanco.co.jp/",
         "official_domains": ["sanco.co.jp"],
         "urls": [
             "https://www.sanco.co.jp/news/",
@@ -702,9 +750,197 @@ def clean_news_summary(summary, title, company_name):
 
 
 # ==========================================
-# 3. スクレイピング（公式・一般ニュース）
+# 3. スクレイピング（公式・フォールバック自動追跡付き）
 # ==========================================
+def fetch_url_html(url, referer, headers, ctx):
+    """HTMLを取得・解凍・自動デコードする補助関数"""
+    try:
+        h = dict(headers)
+        if referer:
+            h["Referer"] = referer
+        req = urllib.request.Request(url, headers=h)
+        with urllib.request.urlopen(req, context=ctx, timeout=8) as res:
+            raw_bytes = res.read()
+            content_encoding = res.headers.get("Content-Encoding", "").lower()
+            final_url = res.geturl()
+
+        if content_encoding == "gzip" or raw_bytes[:2] == b"\x1f\x8b":
+            try:
+                raw_bytes = gzip.decompress(raw_bytes)
+            except Exception:
+                pass
+        elif content_encoding == "deflate":
+            try:
+                raw_bytes = zlib.decompress(raw_bytes)
+            except Exception:
+                pass
+
+        html_text = decode_html_bytes(raw_bytes, url=final_url)
+        return html_text, final_url
+    except Exception:
+        return "", url
+
+
+def parse_releases_from_html(html_text, final_base_url, company_info, cutoff_date, today, current_year, seen_urls):
+    """HTMLから公式発表のリストを抽出するコアロジック"""
+    results = []
+    allowed_domains = company_info.get("official_domains", [])
+
+    # RSS/Feed対応
+    if "<rss" in html_text or "<feed" in html_text or "<rdf:RDF" in html_text:
+        for item_xml in re.findall(r"<(?:item|entry)>(.*?)</(?:item|entry)>", html_text, flags=re.DOTALL):
+            t_m = re.search(r"<title>(.*?)</title>", item_xml, flags=re.DOTALL)
+            l_m = re.search(r"<link(?:>|\s+[^>]*?href=[\"']([^\"']+)[\"'])", item_xml, flags=re.DOTALL)
+            d_m = re.search(r"<(?:pubDate|dc:date|updated)>(.*?)</(?:pubDate|dc:date|updated)>", item_xml, flags=re.DOTALL)
+            
+            if t_m:
+                t = re.sub(r"<!\[CDATA\[(.*?)\]\]>", r"\1", t_m.group(1)).strip()
+                l = ""
+                if l_m:
+                    l = l_m.group(1).strip() if l_m.group(1) else re.search(r"<link>(.*?)</link>", item_xml, flags=re.DOTALL).group(1).strip()
+                if not l:
+                    continue
+                l = urllib.parse.urljoin(final_base_url, l)
+
+                d_str = d_m.group(1) if d_m else ""
+                item_date = parse_date_text(d_str, current_year)
+                if item_date and (cutoff_date <= item_date <= today) and l not in seen_urls:
+                    clean_t = clean_leading_date(t)
+                    if any(ng in clean_t for ng in ["営業時間", "営業カレンダー", "最新のニュース"]):
+                        continue
+                    seen_urls.add(l)
+                    results.append({
+                        "date": item_date,
+                        "type": "公式発表",
+                        "title": clean_t,
+                        "url": l,
+                        "pdf_url": l if l.lower().split('?')[0].endswith(".pdf") else None,
+                        "source": company_info["name"] + " 公式HP",
+                        "is_pdf": l.lower().split('?')[0].endswith(".pdf"),
+                    })
+        return results
+
+    clean_html = re.sub(r"<script.*?>.*?</script>", "", html_text, flags=re.DOTALL | re.IGNORECASE)
+    clean_html = re.sub(r"<style.*?>.*?</style>", "", clean_html, flags=re.DOTALL | re.IGNORECASE)
+
+    # 上部の検索フィルターエリア（フォームやセレクト等）を取り除き、下部の本文リストを優先
+    main_body_html = clean_html
+    # 検索フィルタータグの内側をマスク
+    main_body_html = re.sub(r"<form.*?>.*?</form>", " ", main_body_html, flags=re.DOTALL | re.IGNORECASE)
+    main_body_html = re.sub(r"<select.*?>.*?</select>", " ", main_body_html, flags=re.DOTALL | re.IGNORECASE)
+
+    a_matches = list(
+        re.finditer(
+            r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>(.*?)</a>',
+            main_body_html,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+    )
+
+    for m in a_matches:
+        raw_href = m.group(1).strip().strip("'\"").replace(" ", "").replace("\r", "").replace("\n", "").replace("\t", "")
+        if not raw_href or raw_href.startswith(("javascript:", "#", "mailto:", "tel:")):
+            continue
+
+        full_url = urllib.parse.urljoin(final_base_url, raw_href)
+        if full_url in seen_urls:
+            continue
+
+        # 過去年の古いアーカイブリンクは除外
+        if re.search(r'/(?:20[01]\d|202[0-3])/', full_url):
+            continue
+
+        parsed_u = urllib.parse.urlparse(full_url)
+        if not any(d in parsed_u.netloc.lower() for d in allowed_domains if d):
+            continue
+
+        inside_html = m.group(2)
+        start_pos, end_pos = m.start(), m.end()
+
+        # ★ 東急などの「<a>タグの内側に日付がある」構造を最優先判定
+        found_date = parse_date_text(inside_html, current_year)
+
+        # 外側（前後の兄弟要素）からの探索
+        if not found_date:
+            before_html = main_body_html[max(0, start_pos - 600) : start_pos]
+            found_date = parse_date_text(before_html, current_year, prefer_first=False)
+        if not found_date:
+            after_html = main_body_html[end_pos : min(len(main_body_html), end_pos + 400)]
+            found_date = parse_date_text(after_html, current_year, prefer_first=True)
+
+        if not found_date or not (cutoff_date <= found_date <= today):
+            continue
+
+        raw_t = re.sub(r"<[^>]+>", " ", inside_html)
+        raw_t = html.unescape(raw_t)
+        clean_t = re.sub(r"\s+", " ", raw_t).strip()
+
+        surrounding = main_body_html[max(0, start_pos - 450) : min(len(main_body_html), end_pos + 350)]
+        surrounding = clean_surrounding_html(surrounding)
+
+        if clean_t in GENERIC_LINK_TEXTS or len(clean_t) < 5 or clean_t == "最新のニュース":
+            h_m = re.findall(r"<h[1-5][^>]*>(.*?)</h[1-5]>", surrounding, flags=re.DOTALL | re.IGNORECASE)
+            if h_m:
+                clean_t = re.sub(r"<[^>]+>", "", h_m[-1]).strip()
+            else:
+                comb = re.sub(r"<[^>]+>", " ", surrounding)
+                comb = html.unescape(comb)
+                lines = [line.strip() for line in comb.split() if len(line.strip()) > 6 and line.strip() not in GENERIC_LINK_TEXTS and line.strip() != "最新のニュース"]
+                if lines:
+                    clean_t = lines[0]
+                else:
+                    continue
+
+        if clean_t in GENERIC_LINK_TEXTS or len(clean_t) < 5 or clean_t == "最新のニュース":
+            continue
+
+        if any(bad in clean_t for bad in ['="', "='", "class=", "id=", "style=", "headerMenu", "header", "menu", "<", ">"]):
+            continue
+
+        clean_t = clean_leading_date(clean_t)
+
+        if company_info["id"] == "nara-kotsu":
+            clean_t = re.sub(r'^(?:総合路線バス|路線バス|臨時バス|高速バス|貸切バス|観光バス|お知らせ|プレスリリース)+', '', clean_t).strip()
+
+        if len(clean_t) < 5 or clean_t in GENERIC_LINK_TEXTS or clean_t == "最新のニュース":
+            continue
+
+        if any(ng in clean_t for ng in ["営業時間", "営業カレンダー", "本日の営業時間"]):
+            continue
+
+        pdf_m = re.search(r'href=["\']([^"\']+\.pdf(?:\?[^"\']*)?)["\']', surrounding, re.IGNORECASE)
+        detected_pdf = urllib.parse.urljoin(final_base_url, pdf_m.group(1).strip()) if pdf_m else None
+
+        page_url = full_url
+        pdf_url = detected_pdf
+
+        if full_url.lower().split('?')[0].endswith(".pdf"):
+            pdf_url = full_url
+            page_m = re.search(r'href=["\']([^"\']*(?:page_|article/|detail/)[^"\']*\.html)["\']', surrounding, re.IGNORECASE)
+            if page_m:
+                page_url = urllib.parse.urljoin(final_base_url, page_m.group(1).strip())
+
+        seen_urls.add(full_url)
+        is_pdf = bool(pdf_url or full_url.lower().split('?')[0].endswith(".pdf"))
+
+        results.append({
+            "date": found_date,
+            "type": "公式発表",
+            "title": clean_t[:130],
+            "url": page_url,
+            "pdf_url": pdf_url,
+            "source": company_info["name"] + " 公式HP",
+            "is_pdf": is_pdf,
+        })
+
+    return results
+
+
 def fetch_official_releases(company_info, max_days_back=21):
+    """
+    公式発表を取得。結果が0件（なし）の場合は、自動的にトップページから
+    ニュースリリース/広報発表の生リンクを探し出して追跡する自己修復フォールバックを実行
+    """
     results = []
     seen_urls = set()
     today = datetime.date.today()
@@ -712,203 +948,52 @@ def fetch_official_releases(company_info, max_days_back=21):
     current_year = today.year
 
     ctx = ssl._create_unverified_context()
-    
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "Accept-Language": "ja,ja-JP;q=0.9,en;q=0.8",
         "Accept-Encoding": "gzip, deflate",
-        "Referer": company_info["urls"][0],
         "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124"',
         "Sec-Ch-Ua-Mobile": "?0",
         "Sec-Ch-Ua-Platform": '"Windows"',
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "same-origin",
-        "Sec-Fetch-User": "?1",
         "Upgrade-Insecure-Requests": "1",
     }
 
-    allowed_domains = company_info.get("official_domains", [])
-
+    # 1. 既定の巡回URLを順次解析
     for url in company_info["urls"]:
-        try:
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, context=ctx, timeout=9) as res:
-                raw_bytes = res.read()
-                content_encoding = res.headers.get("Content-Encoding", "").lower()
-                final_base_url = res.geturl()
+        html_text, final_url = fetch_url_html(url, company_info.get("top_url", url), headers, ctx)
+        if html_text:
+            items = parse_releases_from_html(html_text, final_url, company_info, cutoff_date, today, current_year, seen_urls)
+            results.extend(items)
 
-            if content_encoding == "gzip" or raw_bytes[:2] == b"\x1f\x8b":
-                try:
-                    raw_bytes = gzip.decompress(raw_bytes)
-                except Exception:
-                    pass
-            elif content_encoding == "deflate":
-                try:
-                    raw_bytes = zlib.decompress(raw_bytes)
-                except Exception:
-                    pass
+    # ★ 2. フォールバック機能：結果が「0件（なし）」だった場合、トップページから再探索
+    if not results and company_info.get("top_url"):
+        top_html, final_top_url = fetch_url_html(company_info["top_url"], "", headers, ctx)
+        if top_html:
+            # トップページに直接掲載されている新着一覧をまず解析
+            direct_items = parse_releases_from_html(top_html, final_top_url, company_info, cutoff_date, today, current_year, seen_urls)
+            results.extend(direct_items)
 
-            html_text = decode_html_bytes(raw_bytes, url=url)
+            # さらにトップページから「ニュースリリース/プレスリリース/広報発表」へのリンクを探し出して追跡
+            if not results:
+                release_link_patterns = [
+                    r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>(?:.*?)(?:ニュースリリース|プレスリリース|広報発表|新着情報|News\s*Release)(?:.*?)</a>'
+                ]
+                found_release_urls = []
+                for pat in release_link_patterns:
+                    for m in re.finditer(pat, top_html, flags=re.IGNORECASE | re.DOTALL):
+                        cand_href = m.group(1).strip()
+                        if cand_href and not cand_href.startswith(("javascript:", "#")):
+                            cand_full = urllib.parse.urljoin(final_top_url, cand_href)
+                            if cand_full not in company_info["urls"] and cand_full not in found_release_urls:
+                                found_release_urls.append(cand_full)
 
-            # RSS/RDFフィード
-            if "<rss" in html_text or "<feed" in html_text or "<rdf:RDF" in html_text:
-                for item_xml in re.findall(r"<(?:item|entry)>(.*?)</(?:item|entry)>", html_text, flags=re.DOTALL):
-                    t_m = re.search(r"<title>(.*?)</title>", item_xml, flags=re.DOTALL)
-                    l_m = re.search(r"<link(?:>|\s+[^>]*?href=[\"']([^\"']+)[\"'])", item_xml, flags=re.DOTALL)
-                    d_m = re.search(r"<(?:pubDate|dc:date|updated)>(.*?)</(?:pubDate|dc:date|updated)>", item_xml, flags=re.DOTALL)
-                    
-                    if t_m:
-                        t = re.sub(r"<!\[CDATA\[(.*?)\]\]>", r"\1", t_m.group(1)).strip()
-                        l = ""
-                        if l_m:
-                            l = l_m.group(1).strip() if l_m.group(1) else re.search(r"<link>(.*?)</link>", item_xml, flags=re.DOTALL).group(1).strip()
-                        if not l:
-                            continue
-                        l = urllib.parse.urljoin(final_base_url, l)
-
-                        d_str = d_m.group(1) if d_m else ""
-                        item_date = parse_date_text(d_str, current_year)
-                        if item_date and (cutoff_date <= item_date <= today) and l not in seen_urls:
-                            clean_t = clean_leading_date(t)
-                            if any(ng in clean_t for ng in ["営業時間", "営業カレンダー", "最新のニュース"]):
-                                continue
-                            seen_urls.add(l)
-                            results.append({
-                                "date": item_date,
-                                "type": "公式発表",
-                                "title": clean_t,
-                                "url": l,
-                                "pdf_url": l if l.lower().split('?')[0].endswith(".pdf") else None,
-                                "source": company_info["name"] + " 公式HP",
-                                "is_pdf": l.lower().split('?')[0].endswith(".pdf"),
-                            })
-                continue
-
-            # 通常HTMLパース
-            clean_html = re.sub(r"<script.*?>.*?</script>", "", html_text, flags=re.DOTALL | re.IGNORECASE)
-            clean_html = re.sub(r"<style.*?>.*?</style>", "", clean_html, flags=re.DOTALL | re.IGNORECASE)
-
-            a_matches = list(
-                re.finditer(
-                    r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>(.*?)</a>',
-                    clean_html,
-                    flags=re.IGNORECASE | re.DOTALL,
-                )
-            )
-
-            for m in a_matches:
-                raw_href = m.group(1).strip().strip("'\"").replace(" ", "").replace("\r", "").replace("\n", "").replace("\t", "")
-                if not raw_href or raw_href.startswith(("javascript:", "#", "mailto:", "tel:")):
-                    continue
-
-                full_url = urllib.parse.urljoin(final_base_url, raw_href)
-                if full_url in seen_urls:
-                    continue
-
-                if re.search(r'/(?:20[01]\d|202[0-3])/', full_url):
-                    continue
-
-                parsed_u = urllib.parse.urlparse(full_url)
-                if not any(d in parsed_u.netloc.lower() for d in allowed_domains if d):
-                    continue
-
-                if company_info["id"] == "hanshin" and "hankyu-hanshin.co.jp" in parsed_u.netloc.lower():
-                    surrounding_check = clean_html[max(0, m.start() - 200) : min(len(clean_html), m.end() + 200)]
-                    if "阪急" in surrounding_check and "阪神" not in surrounding_check:
-                        continue
-
-                inside_html = m.group(2)
-                start_pos, end_pos = m.start(), m.end()
-
-                before_html = clean_html[max(0, start_pos - 600) : start_pos]
-                after_html = clean_html[end_pos : min(len(clean_html), end_pos + 400)]
-
-                found_date = parse_date_text(inside_html, current_year)
-                if not found_date:
-                    found_date = parse_date_text(before_html, current_year, prefer_first=False)
-                if not found_date:
-                    found_date = parse_date_text(after_html, current_year, prefer_first=True)
-
-                if not found_date or not (cutoff_date <= found_date <= today):
-                    continue
-
-                raw_t = re.sub(r"<[^>]+>", " ", inside_html)
-                raw_t = html.unescape(raw_t)
-                clean_t = re.sub(r"\s+", " ", raw_t).strip()
-
-                surrounding = clean_html[max(0, start_pos - 450) : min(len(clean_html), end_pos + 350)]
-                surrounding = clean_surrounding_html(surrounding)
-
-                if clean_t in GENERIC_LINK_TEXTS or len(clean_t) < 5 or clean_t == "最新のニュース":
-                    h_m = re.findall(r"<h[1-5][^>]*>(.*?)</h[1-5]>", surrounding, flags=re.DOTALL | re.IGNORECASE)
-                    if h_m:
-                        clean_t = re.sub(r"<[^>]+>", "", h_m[-1]).strip()
-                    else:
-                        comb = re.sub(r"<[^>]+>", " ", surrounding)
-                        comb = html.unescape(comb)
-                        lines = [line.strip() for line in comb.split() if len(line.strip()) > 6 and line.strip() not in GENERIC_LINK_TEXTS and line.strip() != "最新のニュース"]
-                        if lines:
-                            clean_t = lines[0]
-                        else:
-                            continue
-
-                if clean_t in GENERIC_LINK_TEXTS or len(clean_t) < 5 or clean_t == "最新のニュース":
-                    continue
-
-                if any(bad in clean_t for bad in ['="', "='", "class=", "id=", "style=", "headerMenu", "header", "menu", "<", ">"]):
-                    continue
-
-                clean_t = clean_leading_date(clean_t)
-
-                if company_info["id"] == "nara-kotsu":
-                    clean_t = re.sub(r'^(?:総合路線バス|路線バス|臨時バス|高速バス|貸切バス|観光バス|お知らせ|プレスリリース)+', '', clean_t).strip()
-
-                if len(clean_t) < 5 or clean_t in GENERIC_LINK_TEXTS or clean_t == "最新のニュース":
-                    continue
-
-                if any(ng in clean_t for ng in ["営業時間", "営業カレンダー", "本日の営業時間"]):
-                    continue
-
-                pdf_m = re.search(r'href=["\']([^"\']+\.pdf(?:\?[^"\']*)?)["\']', surrounding, re.IGNORECASE)
-                detected_pdf = urllib.parse.urljoin(final_base_url, pdf_m.group(1).strip()) if pdf_m else None
-
-                page_url = full_url
-                pdf_url = detected_pdf
-
-                if full_url.lower().split('?')[0].endswith(".pdf"):
-                    pdf_url = full_url
-                    page_m = re.search(r'href=["\']([^"\']*(?:page_|article/|detail/)[^"\']*\.html)["\']', surrounding, re.IGNORECASE)
-                    if page_m:
-                        page_url = urllib.parse.urljoin(final_base_url, page_m.group(1).strip())
-
-                if company_info["id"] == "jr-west" and not pdf_url and page_url.endswith(".html"):
-                    try:
-                        sub_req = urllib.request.Request(page_url, headers=headers)
-                        with urllib.request.urlopen(sub_req, context=ctx, timeout=3) as sub_res:
-                            sub_b = sub_res.read()
-                            sub_h = decode_html_bytes(sub_b, url=page_url)
-                            inner_pdf_m = re.search(r'href=["\']([^"\']+\.pdf)["\']', sub_h, re.IGNORECASE)
-                            if inner_pdf_m:
-                                pdf_url = urllib.parse.urljoin(page_url, inner_pdf_m.group(1).strip())
-                    except Exception:
-                        pass
-
-                seen_urls.add(full_url)
-                is_pdf = bool(pdf_url or full_url.lower().split('?')[0].endswith(".pdf"))
-
-                results.append({
-                    "date": found_date,
-                    "type": "公式発表",
-                    "title": clean_t[:130],
-                    "url": page_url,
-                    "pdf_url": pdf_url,
-                    "source": company_info["name"] + " 公式HP",
-                    "is_pdf": is_pdf,
-                })
-        except Exception:
-            pass
+                # 見つかった新リリースページを追跡解析
+                for new_target in found_release_urls[:3]:
+                    sub_html, sub_final = fetch_url_html(new_target, final_top_url, headers, ctx)
+                    if sub_html:
+                        sub_items = parse_releases_from_html(sub_html, sub_final, company_info, cutoff_date, today, current_year, seen_urls)
+                        results.extend(sub_items)
 
     return results
 
@@ -1050,10 +1135,10 @@ def fetch_general_news(query, company_name, max_days_back=21):
 
 
 # ==========================================
-# 4. 社別データキャッシュエンジン
+# 4. 社別データキャッシュエンジン（キャッシュバージョン更新で完全リフレッシュ）
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_jreast_prtimes_fixed"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_fallback_auto_discovery_v1"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
