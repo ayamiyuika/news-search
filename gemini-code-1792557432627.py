@@ -72,12 +72,11 @@ NAV_EXCLUDE_WORDS = {
 # セッションステートの初期化
 today = datetime.datetime.now(JST).date()
 
-if "show_official" not in st.session_state:
-    st.session_state.show_official = True     # デフォルト：公式発表ON（青色）
-if "show_news" not in st.session_state:
-    st.session_state.show_news = False        # デフォルト：ニュースOFF（灰色）
+# ★ 表示モード（"official": 公式発表のみ, "news": ニュースリリースのみ, None: 両方OFF）
+if "active_mode" not in st.session_state:
+    st.session_state.active_mode = "official"  # デフォルトは公式発表（青色）
 if "period_days" not in st.session_state:
-    st.session_state.period_days = 3          # デフォルト：3日間
+    st.session_state.period_days = 3           # デフォルト：3日間
 if "custom_date_range" not in st.session_state:
     st.session_state.custom_date_range = (today - datetime.timedelta(days=2), today)
 if "hidden_companies" not in st.session_state:
@@ -88,7 +87,30 @@ if "diag_logs" not in st.session_state:
     st.session_state.diag_logs = {}
 
 # ==========================================
-# 1. 会社マスタープール（東京メトロ・大阪メトロ完全削除、海遊館なし）
+# 0-A. クエリパラメータ（一括選択・解除）の処理
+# ==========================================
+selected_from_query = []
+try:
+    if hasattr(st.query_params, "get_all"):
+        selected_from_query = st.query_params.get_all("c")
+    else:
+        val = st.query_params.get("c")
+        if isinstance(val, list):
+            selected_from_query = val
+        elif isinstance(val, str):
+            selected_from_query = [val]
+except Exception:
+    pass
+
+if "submitted" in st.query_params:
+    st.session_state.selected_filter_companies = set(selected_from_query)
+    st.query_params.clear()
+elif "reset" in st.query_params:
+    st.session_state.selected_filter_companies.clear()
+    st.query_params.clear()
+
+# ==========================================
+# 1. 会社マスタープール（東急電鉄表記修正・東京/大阪メトロ完全削除・海遊館なし）
 # ==========================================
 COMPANY_POOL = {
     # --- JR各社 ---
@@ -151,7 +173,6 @@ COMPANY_POOL = {
         ],
         "query": "JR四国 OR 四国旅客鉄道",
     },
-    # ★ JR九州：月別ナビを回避し、最新のリリース一覧を正確に走査
     "jr-kyushu": {
         "id": "jr-kyushu",
         "name": "JR九州",
@@ -163,7 +184,7 @@ COMPANY_POOL = {
         ],
         "query": "JR九州 OR 九州旅客鉄道",
     },
-    # --- 私鉄各社（東京メトロ・大阪メトロ完全削除） ---
+    # --- 私鉄各社 ---
     "tobu": {
         "id": "tobu",
         "name": "東武鉄道",
@@ -193,8 +214,8 @@ COMPANY_POOL = {
         "top_url": "https://www.keisei.co.jp/",
         "official_domains": ["keisei.co.jp"],
         "urls": [
-            "https://www.keisei.co.jp/news/",
             "https://www.keisei.co.jp/",
+            "https://www.keisei.co.jp/news/",
         ],
         "query": "京成電鉄",
     },
@@ -210,23 +231,22 @@ COMPANY_POOL = {
         ],
         "query": "京王電鉄",
     },
-    # ★ 小田急電鉄
     "odakyu": {
         "id": "odakyu",
         "name": "小田急電鉄",
         "top_url": "https://www.odakyu.jp/",
         "official_domains": ["odakyu.jp"],
         "urls": [
+            "https://www.odakyu.jp/",
             "https://www.odakyu.jp/company/about/news/",
             "https://www.odakyu.jp/news/",
-            "https://www.odakyu.jp/",
         ],
         "query": "小田急電鉄",
     },
-    # ★ 東急電鉄
+    # ★ ご要望通り「東急電鉄（東急を含む）」に変更
     "tokyu": {
         "id": "tokyu",
-        "name": "東急電鉄（東急HD含む）",
+        "name": "東急電鉄（東急を含む）",
         "top_url": "https://www.tokyu.co.jp/",
         "official_domains": ["tokyu.co.jp"],
         "urls": [
@@ -236,20 +256,18 @@ COMPANY_POOL = {
         ],
         "query": "東急電鉄 OR 東急",
     },
-    # ★ 京浜急行電鉄
     "keikyu": {
         "id": "keikyu",
         "name": "京浜急行電鉄",
         "top_url": "https://www.keikyu.co.jp/",
         "official_domains": ["keikyu.co.jp"],
         "urls": [
+            "https://www.keikyu.co.jp/",
             "https://www.keikyu.co.jp/company/news/",
             "https://www.keikyu.co.jp/report/",
-            "https://www.keikyu.co.jp/",
         ],
         "query": "京浜急行電鉄 OR 京急",
     },
-    # ★ 相模鉄道
     "sotetsu": {
         "id": "sotetsu",
         "name": "相模鉄道（相鉄HD含む）",
@@ -310,7 +328,6 @@ COMPANY_POOL = {
         ],
         "query": "阪神電気鉄道 OR 阪神電車",
     },
-    # ★ 阪急電鉄
     "hankyu": {
         "id": "hankyu",
         "name": "阪急電鉄",
@@ -324,7 +341,6 @@ COMPANY_POOL = {
         ],
         "query": "阪急電鉄 OR 阪急電車",
     },
-    # ★ 阪急阪神HD
     "hankyu-hanshin-hd": {
         "id": "hankyu-hanshin-hd",
         "name": "阪急阪神ホールディングス",
@@ -349,7 +365,6 @@ COMPANY_POOL = {
         "query": "西日本鉄道 OR 西鉄",
     },
     # --- 近鉄グループ（17社・海遊館なし） ---
-    # ★ 近鉄GHD
     "kintetsu-ghd": {
         "id": "kintetsu-ghd",
         "name": "近鉄GHD",
@@ -362,7 +377,6 @@ COMPANY_POOL = {
         ],
         "query": "近鉄グループホールディングス OR 近鉄GHD OR 近鉄グループ",
     },
-    # ★ 近畿日本鉄道
     "kintetsu-railway": {
         "id": "kintetsu-railway",
         "name": "近畿日本鉄道",
@@ -434,7 +448,6 @@ COMPANY_POOL = {
         ],
         "query": '"近鉄リテーリング"',
     },
-    # ★ 近商ストア
     "kinsho-store": {
         "id": "kinsho-store",
         "name": "近商ストア",
@@ -447,7 +460,6 @@ COMPANY_POOL = {
         ],
         "query": '"近商ストア"',
     },
-    # ★ 近鉄・都ホテルズ
     "miyako-hotels": {
         "id": "miyako-hotels",
         "name": "近鉄・都ホテルズ",
@@ -459,7 +471,6 @@ COMPANY_POOL = {
         ],
         "query": '"近鉄・都ホテルズ" OR "都ホテルズ＆リゾーツ" OR "都ホテル"',
     },
-    # ★ KNT-CTホールディングス
     "knt-ct": {
         "id": "knt-ct",
         "name": "KNT-CTホールディングス",
@@ -484,7 +495,6 @@ COMPANY_POOL = {
         ],
         "query": '"近畿日本ツーリスト"',
     },
-    # ★ クラブツーリズム（旅行サイト公式ニュースリリース）
     "club-tourism": {
         "id": "club-tourism",
         "name": "クラブツーリズム",
@@ -530,7 +540,6 @@ COMPANY_POOL = {
         ],
         "query": '"奈良交通"',
     },
-    # ★ 三交ホールディングス
     "sanco-hd": {
         "id": "sanco-hd",
         "name": "三交ホールディングス",
@@ -543,7 +552,6 @@ COMPANY_POOL = {
         ],
         "query": '"三交ホールディングス" OR "三重交通グループホールディングス"',
     },
-    # ★ 三重交通
     "sanco": {
         "id": "sanco",
         "name": "三重交通",
@@ -560,6 +568,7 @@ COMPANY_POOL = {
 
 JR_ORDER = ["jr-hokkaido", "jr-east", "jr-central", "jr-west", "jr-shikoku", "jr-kyushu"]
 
+# 東京メトロ・大阪メトロを完全削除した私鉄順序
 PRIVATE_ORDER = [
     "tobu", "seibu", "keisei", "keio", "odakyu",
     "tokyu", "keikyu", "sotetsu", "meitetsu",
@@ -567,6 +576,7 @@ PRIVATE_ORDER = [
     "nankai", "keihan", "hanshin", "hankyu", "hankyu-hanshin-hd", "nishitetsu"
 ]
 
+# 近鉄グループ17社（海遊館なし）
 KINTETSU_ORDER = [
     "kintetsu-ghd",
     "kintetsu-railway",
@@ -667,7 +677,6 @@ def parse_date_text(raw_text, current_year):
     if not raw_text:
         return None
 
-    # datetime属性の検出
     attr_match = re.search(r'(?:datetime|data-date)=["\']((?:19|20)\d{2}[-/\.][0-9]{1,2}[-/\.][0-9]{1,2})', raw_text, re.IGNORECASE)
     if attr_match:
         try:
@@ -879,7 +888,7 @@ def parse_official_releases_strict(html_text, base_url, company_info, cutoff_dat
     clean_html = re.sub(r"<style.*?>.*?</style>", "", clean_html, flags=re.DOTALL | re.IGNORECASE)
     clean_html = re.sub(r"<svg.*?>.*?</svg>", "", clean_html, flags=re.DOTALL | re.IGNORECASE)
 
-    # ★ パターン1: 構造ブロック単位（行 <tr>、定義リスト <dt>/<dd>、リスト <li>、カード <article>）
+    # ★ パターン1: 構造ブロック単位（行 <tr>、リスト <li>、カード <article>）
     # ※ <div> は月別ナビゲーションやコンテナ全体を巻き込むため、ブロック単位としては使用しない
     block_patterns = [
         r'(<tr[^>]*>.*?</tr>)',
@@ -909,6 +918,10 @@ def parse_official_releases_strict(html_text, base_url, company_info, cutoff_dat
 
                 # タイトルは絶対にブロック全体ではなく <a> タグ内のテキストから取得
                 clean_t = clean_extracted_title(a_m.group(2), company_info)
+                if not clean_t:
+                    clean_block_txt = re.sub(r"<[^>]+>", " ", block)
+                    clean_t = clean_extracted_title(clean_block_txt, company_info)
+
                 if not clean_t:
                     continue
 
@@ -1151,7 +1164,7 @@ def fetch_general_news(query, company_dict, max_days_back=21):
                 u_match = re.search(r'[?&]u=a1([a-zA-Z0-9_\-]+)', link)
                 if u_match:
                     try:
-                        b64_str = u_match.group(1) + '=' * (-len(b64_str) % 4)
+                        b64_str = u_match.group(1) + '=' * (-len(u_match.group(1)) % 4)
                         decoded_bytes = base64.urlsafe_b64decode(b64_str)
                         real_url = decoded_bytes.decode('utf-8', errors='ignore')
                         if real_url.startswith("http"):
@@ -1266,7 +1279,7 @@ def fetch_general_news(query, company_dict, max_days_back=21):
 # 7. 社別キャッシュエンジン
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_strict_direct_and_clean_v17"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_strict_direct_and_clean_v18"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
@@ -1340,28 +1353,30 @@ st.markdown(
 with st.sidebar:
     st.header("⚙️ 設定")
 
-    # --- 1. 表示モード切り替え（トグルボタン：公式発表ON・ニュースOFFで開始） ---
+    # --- 1. 表示モード切り替え（ご要望通りの排他トグル仕様） ---
     st.write("**1. 表示モード切り替え**")
-    btn_type_off = "primary" if st.session_state.show_official else "secondary"
-    btn_type_news = "primary" if st.session_state.show_news else "secondary"
+    btn_type_off = "primary" if st.session_state.active_mode == "official" else "secondary"
+    btn_type_news = "primary" if st.session_state.active_mode == "news" else "secondary"
 
     col_m1, col_m2 = st.columns(2)
     with col_m1:
         if st.button("📢 公式発表", key="btn_mode_official", type=btn_type_off, use_container_width=True):
-            st.session_state.show_official = not st.session_state.show_official
-            if not st.session_state.show_official and not st.session_state.show_news:
-                st.session_state.show_official = True
+            if st.session_state.active_mode == "official":
+                st.session_state.active_mode = None  # 公式が青色の時に押すと両方灰色
+            else:
+                st.session_state.active_mode = "official"  # 公式が青色になりニュースは灰色
             st.rerun()
     with col_m2:
-        if st.button("📰 ニュース", key="btn_mode_news", type=btn_type_news, use_container_width=True):
-            st.session_state.show_news = not st.session_state.show_news
-            if not st.session_state.show_official and not st.session_state.show_news:
-                st.session_state.show_official = True
+        if st.button("📰 ニュースリリース", key="btn_mode_news", type=btn_type_news, use_container_width=True):
+            if st.session_state.active_mode == "news":
+                st.session_state.active_mode = None  # ニュースが青色の時に押すと両方灰色
+            else:
+                st.session_state.active_mode = "news"  # ニュースが青色になり公式は灰色
             st.rerun()
 
     st.markdown("---")
 
-    # --- 2. 対象期間（３日間／７日間 ＆ カレンダー入力：公式・ニュース共通適用） ---
+    # --- 2. 対象期間（３日間／７日間 ＆ カレンダー入力） ---
     st.write("**2. 対象期間**")
     p_col1, p_col2 = st.columns(2)
     with p_col1:
@@ -1482,7 +1497,7 @@ render_groups = [
 ]
 
 # ==========================================
-# 11. 会社選択ナビゲーションフォーム
+# 11. 会社選択ナビゲーションフォーム（青色維持）
 # ==========================================
 st.markdown("<div id='sec-top' style='scroll-margin-top: 10px;'></div>", unsafe_allow_html=True)
 
@@ -1767,15 +1782,24 @@ components.html(
 )
 
 # ==========================================
-# 12. 結果の描画（トグル連動表示）
+# 12. 結果の描画（ご指定の完全絞り込み＆排他表示）
 # ==========================================
 for group_prefix, group_title, comp_list in render_groups:
+    # ★ 会社選択時：選択された会社のみを抽出し、選択されていない会社は名前も完全に表示しない
+    if has_filter:
+        visible_comps = [c for c in comp_list if c["id"] in sel_set and c["id"] not in st.session_state.hidden_companies]
+    else:
+        visible_comps = [c for c in comp_list if c["id"] not in st.session_state.hidden_companies]
+
+    if not visible_comps:
+        continue  # このグループに対象会社がなければ見出しごとスキップ
+
     st.write("<br>", unsafe_allow_html=True)
     st.markdown(f"<div id='sec-{group_prefix}' style='scroll-margin-top: 15px;'></div>", unsafe_allow_html=True)
     st.markdown(f"## 【 {group_title} 】")
     st.divider()
 
-    for comp in comp_list:
+    for comp in visible_comps:
         raw_items = all_cached_data.get(comp["name"], [])
 
         # 指定期間内の抽出
@@ -1790,19 +1814,17 @@ for group_prefix, group_title, comp_list in render_groups:
         official_items.sort(key=lambda x: x["date"], reverse=True)
         general_items.sort(key=lambda x: x["date"], reverse=True)
 
+        # ★ モードに応じた表示切り替え
         display_items = []
-        if st.session_state.show_official:
-            display_items.extend(official_items)
-        if st.session_state.show_news:
-            display_items.extend(general_items)
+        if st.session_state.active_mode == "official":
+            display_items = official_items
+        elif st.session_state.active_mode == "news":
+            display_items = general_items
+        else:
+            display_items = []  # 両方灰色の場合は非表示
 
-        # 公式HPリンク先はトップページ（top_url）を確実に参照
         main_url = comp.get("top_url", comp["urls"][0])
         anchor_id = f"{group_prefix}-{comp['id']}"
-
-        is_manually_hidden = comp["id"] in st.session_state.hidden_companies
-        is_filtered_out = has_filter and (comp["id"] not in st.session_state.selected_filter_companies)
-        should_hide_articles = is_manually_hidden or is_filtered_out
 
         h_col1, h_col2 = st.columns([5, 1.3])
         with h_col1:
@@ -1817,31 +1839,17 @@ for group_prefix, group_title, comp_list in render_groups:
             )
         with h_col2:
             st.write("<div style='margin-top: 22px;'></div>", unsafe_allow_html=True)
-            btn_label = "記事を表示" if should_hide_articles else "記事を非表示"
-            btn_type = "primary" if should_hide_articles else "secondary"
-            if st.button(btn_label, key=f"btn_toggle_{group_prefix}_{comp['id']}", type=btn_type, use_container_width=True):
-                if should_hide_articles:
-                    if comp["id"] in st.session_state.hidden_companies:
-                        st.session_state.hidden_companies.remove(comp["id"])
-                    if has_filter and comp["id"] not in st.session_state.selected_filter_companies:
-                        st.session_state.selected_filter_companies.add(comp["id"])
-                else:
-                    st.session_state.hidden_companies.add(comp["id"])
-                    if comp["id"] in st.session_state.selected_filter_companies:
-                        st.session_state.selected_filter_companies.remove(comp["id"])
+            if st.button("記事を非表示", key=f"btn_hide_{group_prefix}_{comp['id']}", type="secondary", use_container_width=True):
+                st.session_state.hidden_companies.add(comp["id"])
+                if comp["id"] in st.session_state.selected_filter_companies:
+                    st.session_state.selected_filter_companies.remove(comp["id"])
                 st.rerun()
 
-        if should_hide_articles:
+        if st.session_state.active_mode is None:
+            st.info("💡 左側メニューから「📢 公式発表」または「📰 ニュースリリース」を選択してください。")
             st.write("")
-            continue
-
-        if not display_items:
-            labels = []
-            if st.session_state.show_official:
-                labels.append("公式発表")
-            if st.session_state.show_news:
-                labels.append("ニュース")
-            mode_str = "・".join(labels) if labels else "記事"
+        elif not display_items:
+            mode_str = "公式発表" if st.session_state.active_mode == "official" else "ニュースリリース"
             st.info(f"📅 指定期間内の **{mode_str}** は **なし** です。")
             st.write("")
         else:
@@ -1874,7 +1882,7 @@ for group_prefix, group_title, comp_list in render_groups:
                     type_badge = (
                         "<div style='display:inline-block; padding:3px 9px; background-color:#f1f5f9; "
                         "color:#475569; font-size:0.78em; font-weight:600; border-radius:5px; "
-                        "border:1px solid #cbd5e1; margin-bottom:4px;'>📰 ニュース（一般）</div>"
+                        "border:1px solid #cbd5e1; margin-bottom:4px;'>📰 ニュースリリース</div>"
                     )
                     title_link = item["url"]
                     action_link = item["url"]
