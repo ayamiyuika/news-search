@@ -1555,3 +1555,596 @@ st.markdown(
     }
     button[kind="primary"]:hover,
     button[data-testid="baseButton-primary"]:hover,
+    div[data-testid="stButton"] button[kind="primary"]:hover {
+        background-color: #172554 !important;
+        border-color: #172554 !important;
+        color: #ffffff !important;
+    }
+    button[kind="secondary"],
+    button[data-testid="baseButton-secondary"],
+    div[data-testid="stButton"] button[kind="secondary"],
+    section[data-testid="stSidebar"] button[kind="secondary"] {
+        background-color: #f1f5f9 !important;
+        color: #64748b !important;
+        border: 1px solid #cbd5e1 !important;
+        font-weight: 500 !important;
+    }
+    button[kind="secondary"]:hover,
+    button[data-testid="baseButton-secondary"]:hover,
+    div[data-testid="stButton"] button[kind="secondary"]:hover,
+    section[data-testid="stSidebar"] button[kind="secondary"]:hover {
+        background-color: #e2e8f0 !important;
+        color: #1e293b !important;
+        border-color: #94a3b8 !important;
+    }
+    section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] button {
+        padding: 5px 8px !important;
+        font-size: 0.86em !important;
+        white-space: nowrap !important;
+    }
+    input[type="radio"] {
+        accent-color: #1e3a8a !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ==========================================
+# 9. サイドバー操作パネル（３日間／７日間 ＆ カレンダー ＆ 免責事項・お問い合わせ）
+# ==========================================
+with st.sidebar:
+    st.header("⚙️ 設定")
+
+    # --- 1. 表示モード切り替え ---
+    st.write("**1. 表示モード切り替え**")
+    btn_type_off = "primary" if st.session_state.view_mode == "official" else "secondary"
+    btn_type_news = "primary" if st.session_state.view_mode == "news" else "secondary"
+
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        if st.button("📢 公式発表", key="btn_mode_official", type=btn_type_off, use_container_width=True):
+            st.session_state.view_mode = "official"
+            st.session_state.custom_date_range = (today - datetime.timedelta(days=st.session_state.period_days - 1), today)
+            st.rerun()
+    with col_m2:
+        if st.button("📰 ニュース", key="btn_mode_news", type=btn_type_news, use_container_width=True):
+            st.session_state.view_mode = "news"
+            st.session_state.custom_date_range = (today - datetime.timedelta(days=st.session_state.period_days - 1), today)
+            st.rerun()
+
+    st.markdown("---")
+
+    # --- 2. 対象期間（３日間／７日間 ＆ カレンダー入力） ---
+    st.write("**2. 対象期間**")
+    p_col1, p_col2 = st.columns(2)
+    with p_col1:
+        type_p3 = "primary" if st.session_state.period_days == 3 else "secondary"
+        if st.button("📅 3日間", key="btn_p_3", type=type_p3, use_container_width=True):
+            st.session_state.period_days = 3
+            st.session_state.custom_date_range = (today - datetime.timedelta(days=2), today)
+            st.rerun()
+    with p_col2:
+        type_p7 = "primary" if st.session_state.period_days == 7 else "secondary"
+        if st.button("📅 7日間", key="btn_p_7", type=type_p7, use_container_width=True):
+            st.session_state.period_days = 7
+            st.session_state.custom_date_range = (today - datetime.timedelta(days=6), today)
+            st.rerun()
+
+    # カレンダー入力（任意の日程指定）
+    date_val = st.date_input(
+        "📅 カレンダーで任意指定",
+        value=st.session_state.custom_date_range,
+        max_value=today,
+    )
+    if isinstance(date_val, (tuple, list)) and len(date_val) == 2:
+        start_date, end_date = date_val
+        st.session_state.custom_date_range = (start_date, end_date)
+    elif isinstance(date_val, (tuple, list)) and len(date_val) == 1:
+        start_date = end_date = date_val[0]
+        st.session_state.custom_date_range = (start_date, end_date)
+    else:
+        start_date = end_date = date_val
+        st.session_state.custom_date_range = (start_date, end_date)
+
+    diff_days = (end_date - start_date).days + 1
+    st.caption(f"📅 選択中: **{start_date.strftime('%Y/%m/%d')} 〜 {end_date.strftime('%Y/%m/%d')}** ({diff_days}日間)")
+
+    if st.session_state.hidden_companies:
+        if st.button("👁️ すべての会社の記事を再表示", use_container_width=True):
+            st.session_state.hidden_companies.clear()
+            st.rerun()
+
+    st.markdown("---")
+    st.write("**3. データ更新**")
+    st.caption("※サーバー負荷軽減のため、取得結果は1時間自動記憶されます。")
+    if st.button("🔄 キャッシュを破棄して最新取得", type="primary", use_container_width=True):
+        st.cache_data.clear()
+        st.session_state.last_fetch_time = datetime.datetime.now(JST)
+        st.rerun()
+
+    # 診断ログパネル
+    with st.expander("🔍 巡回診断ログ（検証・監視）"):
+        if st.session_state.diag_logs:
+            for cname, log in st.session_state.diag_logs.items():
+                icon = "🟢" if log["status"] == "SUCCESS" else "🔴"
+                st.write(f"**{icon} {cname}** - 公式取得: {log['success_count']}件")
+                for u in log["tried_urls"]:
+                    st.caption(f"・{u}")
+        else:
+            st.caption("巡回完了後にログが表示されます。")
+
+    st.markdown("---")
+    # ★ 免責事項・お問い合わせ（左側サイドバーのみに集約）
+    st.caption(
+        "**【免責事項】**\n"
+        "本サイトは公開情報を自動収集・整理して表示する個人開発ツールです。各鉄道会社および関連企業とは一切関係ありません。情報の完全性・正確性を保証するものではありません。"
+    )
+    st.caption(
+        "**【お問い合わせ】**\n"
+        "近鉄グループホールディングス デジタル戦略部 中谷\n"
+        "(h5-nakatani@rw.kintetsu.co.jp)"
+    )
+
+# ==========================================
+# 10. データ巡回・取得実行
+# ==========================================
+unique_company_keys = list(COMPANY_POOL.keys())
+total_comps = len(unique_company_keys)
+all_cached_data = {}
+
+progress_placeholder = st.empty()
+
+for i, key in enumerate(unique_company_keys):
+    comp = COMPANY_POOL[key]
+    percent = int(((i + 1) / total_comps) * 100)
+    with progress_placeholder.container():
+        st.markdown(
+            f"""
+            <div style="background-color: rgba(30, 58, 138, 0.08); padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(30, 58, 138, 0.3); margin-bottom: 8px;">
+                <div style="font-size: 0.95em; font-weight: 700; color: #1e3a8a; margin-bottom: 4px;">
+                    🔄 最新データを巡回確認中: {i+1} / {total_comps} 社 ({percent}%)
+                </div>
+                <div style="font-size: 0.85em; color: #475569;">
+                    現在確認中: <b>🏢 {comp['name']}</b>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.progress((i + 1) / total_comps)
+
+    items = get_single_company_data(comp, max_days_back=21)
+    all_cached_data[comp["name"]] = items
+
+progress_placeholder.empty()
+
+if "last_fetch_time" not in st.session_state:
+    st.session_state.last_fetch_time = datetime.datetime.now(JST)
+
+st.caption(f"🕒 最終巡回時刻: {st.session_state.last_fetch_time.strftime('%Y-%m-%d %H:%M:%S')} (日本時間) （1時間ごとに自動再巡回）")
+
+# 表示グループ（海遊館なし）
+jr_list = [COMPANY_POOL[cid] for cid in JR_ORDER]
+private_list = [COMPANY_POOL[cid] for cid in PRIVATE_ORDER]
+kintetsu_list = [COMPANY_POOL[cid] for cid in KINTETSU_ORDER]
+
+render_groups = [
+    ("jr", "JR", jr_list),
+    ("private", "私鉄", private_list),
+    ("kintetsu", "近鉄グループ", kintetsu_list),
+]
+
+# ==========================================
+# 11. 会社選択ナビゲーションフォーム
+# ==========================================
+st.markdown("<div id='sec-top' style='scroll-margin-top: 10px;'></div>", unsafe_allow_html=True)
+
+st.markdown(
+    """
+    <style>
+    .slim-jump-container {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 6px;
+        margin-bottom: 14px;
+        padding: 12px 16px;
+        background-color: rgba(128, 128, 128, 0.05);
+        border: 1px solid rgba(128, 128, 128, 0.18);
+        border-radius: 8px;
+    }
+    .slim-jump-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 2px 0;
+    }
+    .slim-label {
+        flex-shrink: 0;
+        width: auto !important;
+        min-width: 165px;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        font-weight: 800;
+        font-size: 1.15em;
+        line-height: 1.3;
+        cursor: pointer !important;
+        user-select: none;
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: all 0.15s ease;
+    }
+    .slim-label:hover {
+        background-color: rgba(30, 58, 138, 0.12);
+        transform: translateY(-1px);
+    }
+    .label-jr { color: #0284c7; }
+    .label-private { color: #10b981; }
+    .label-kintetsu { color: #f59e0b; }
+    .slim-btn-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        flex-grow: 1;
+    }
+    .comp-chk {
+        display: none !important;
+    }
+    .comp-label {
+        display: inline-block;
+        padding: 3px 10px;
+        background-color: #ffffff;
+        color: #334155;
+        border-radius: 12px;
+        border: 1px solid rgba(128, 128, 128, 0.28);
+        font-size: 0.78em;
+        font-weight: 500;
+        line-height: 1.5;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.15s ease;
+    }
+    .comp-label:hover {
+        background-color: #f1f5f9;
+        border-color: #1e3a8a;
+        color: #1e3a8a;
+    }
+    .comp-chk:checked + .comp-label {
+        background-color: #1e3a8a !important;
+        color: #ffffff !important;
+        border-color: #1e3a8a !important;
+        font-weight: 700 !important;
+        box-shadow: 0 1px 3px rgba(30, 58, 138, 0.35) !important;
+    }
+    .filter-action-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 4px;
+        margin-bottom: 24px;
+    }
+    .apply-filter-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 22px;
+        background-color: #1e3a8a;
+        color: #ffffff !important;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.9em;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(30, 58, 138, 0.25);
+        transition: all 0.15s ease;
+    }
+    .apply-filter-btn:hover {
+        background-color: #172554;
+        box-shadow: 0 4px 6px rgba(30, 58, 138, 0.35);
+    }
+    .clear-filter-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 7px 18px;
+        background-color: #ffffff;
+        color: #475569 !important;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 0.88em;
+        font-weight: 600;
+        text-decoration: none !important;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .clear-filter-btn:hover {
+        background-color: #f8fafc;
+        color: #1e3a8a !important;
+        border-color: #1e3a8a;
+    }
+    .link-action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 6px;
+        padding: 4px 12px;
+        background-color: rgba(30, 58, 138, 0.08);
+        color: #1e3a8a !important;
+        border: 1px solid rgba(30, 58, 138, 0.35);
+        border-radius: 6px;
+        font-size: 0.82em;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.15s ease;
+    }
+    .link-action-btn:hover {
+        background-color: #1e3a8a;
+        color: #ffffff !important;
+        border-color: #1e3a8a;
+        text-decoration: none;
+    }
+    @media (max-width: 768px) {
+        .slim-jump-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+        }
+        .slim-label {
+            width: auto !important;
+            min-width: unset;
+            white-space: nowrap !important;
+        }
+        .filter-action-bar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+def make_chk_btn_html(comp_list, prefix, selected_set):
+    pieces = []
+    for c in comp_list:
+        cid = c["id"]
+        chk_id = f"chk-{prefix}-{cid}"
+        checked = "checked" if cid in selected_set else ""
+        pieces.append(
+            f'<input type="checkbox" name="c" value="{cid}" id="{chk_id}" class="comp-chk" {checked}>'
+            f'<label for="{chk_id}" class="comp-label">{c["name"]}</label>'
+        )
+    return "".join(pieces)
+
+sel_set = st.session_state.selected_filter_companies
+has_filter = len(sel_set) > 0
+
+jump_form_html = f"""
+<form method="GET" action="" id="company-filter-form">
+  <input type="hidden" name="submitted" value="1">
+  <div style="margin-top: 10px; margin-bottom: 8px; font-size: 0.9em; font-weight: 600; color: #334155;">
+    💡 会社名を押した後に、『選択した会社の記事を表示する』ボタンを押すと、その会社の記事だけを表示することができます。基本は全て表示します。
+  </div>
+  <div class="slim-jump-container">
+    <div class="slim-jump-row">
+      <div class="slim-label label-jr" id="toggle-btn-jr" title="クリックでJR各社を一括選択/解除">🚆 JR</div>
+      <div class="slim-btn-wrapper">
+        {make_chk_btn_html(jr_list, 'jr', sel_set)}
+      </div>
+    </div>
+    <div class="slim-jump-row">
+      <div class="slim-label label-private" id="toggle-btn-private" title="クリックで私鉄各社を一括選択/解除">🚇 私鉄</div>
+      <div class="slim-btn-wrapper">
+        {make_chk_btn_html(private_list, 'private', sel_set)}
+      </div>
+    </div>
+    <div class="slim-jump-row">
+      <div class="slim-label label-kintetsu" id="toggle-btn-kintetsu" title="クリックで近鉄グループ各社を一括選択/解除">🏢 近鉄グループ</div>
+      <div class="slim-btn-wrapper">
+        {make_chk_btn_html(kintetsu_list, 'kintetsu', sel_set)}
+      </div>
+    </div>
+  </div>
+  <div class="filter-action-bar">
+    <button type="submit" class="apply-filter-btn">選択した会社の記事を表示する</button>
+    <a href="?reset=1" class="clear-filter-btn">🔄 選択を解除する</a>
+  </div>
+</form>
+"""
+
+st.markdown(jump_form_html, unsafe_allow_html=True)
+
+components.html(
+    """
+    <script>
+    (function() {
+        function setupGroupToggles() {
+            const doc = window.parent.document;
+            if (!doc) return;
+
+            const groups = [
+                { id: 'toggle-btn-jr', prefix: 'chk-jr-' },
+                { id: 'toggle-btn-private', prefix: 'chk-private-' },
+                { id: 'toggle-btn-kintetsu', prefix: 'chk-kintetsu-' }
+            ];
+
+            groups.forEach(function(g) {
+                const el = doc.getElementById(g.id);
+                if (!el) return;
+                if (el.dataset.toggleBound === 'true') return;
+                el.dataset.toggleBound = 'true';
+
+                el.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const inputs = doc.querySelectorAll('input[id^="' + g.prefix + '"]');
+                    if (!inputs || inputs.length === 0) return;
+
+                    let allChecked = true;
+                    inputs.forEach(function(inp) {
+                        if (!inp.checked) allChecked = false;
+                    });
+
+                    const newChecked = !allChecked;
+                    inputs.forEach(function(inp) {
+                        inp.checked = newChecked;
+                        inp.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                });
+            });
+        }
+
+        setupGroupToggles();
+        let count = 0;
+        const timer = setInterval(function() {
+            setupGroupToggles();
+            count++;
+            if (count > 25) clearInterval(timer);
+        }, 200);
+
+        try {
+            const observer = new MutationObserver(function() {
+                setupGroupToggles();
+            });
+            if (window.parent && window.parent.document && window.parent.document.body) {
+                observer.observe(window.parent.document.body, { childList: true, subtree: true });
+            }
+        } catch(err) {}
+    })();
+    </script>
+    """,
+    height=0,
+    width=0,
+)
+
+# ==========================================
+# 12. 結果の描画（公式発表／ニュースの排他表示）
+# ==========================================
+current_mode = st.session_state.view_mode
+
+for group_prefix, group_title, comp_list in render_groups:
+    st.write("<br>", unsafe_allow_html=True)
+    st.markdown(f"<div id='sec-{group_prefix}' style='scroll-margin-top: 15px;'></div>", unsafe_allow_html=True)
+    st.markdown(f"## 【 {group_title} 】")
+    st.divider()
+
+    for comp in comp_list:
+        raw_items = all_cached_data.get(comp["name"], [])
+
+        # 指定期間内の抽出
+        period_items = [
+            item for item in raw_items
+            if start_date <= item["date"] <= end_date
+        ]
+
+        if current_mode == "official":
+            display_items = [i for i in period_items if i["type"] == "公式発表"]
+        else:
+            display_items = [i for i in period_items if i["type"] == "ニュース（一般サイト）"]
+
+        display_items.sort(key=lambda x: x["date"], reverse=True)
+
+        # 公式HPリンク先はトップページ（top_url）を確実に参照
+        main_url = comp.get("top_url", comp["urls"][0])
+        anchor_id = f"{group_prefix}-{comp['id']}"
+
+        is_manually_hidden = comp["id"] in st.session_state.hidden_companies
+        is_filtered_out = has_filter and (comp["id"] not in st.session_state.selected_filter_companies)
+        should_hide_articles = is_manually_hidden or is_filtered_out
+
+        h_col1, h_col2 = st.columns([5, 1.3])
+        with h_col1:
+            st.markdown(
+                f"""
+                <div id='{anchor_id}' style='margin-top: 18px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 3px solid #1e3a8a; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px;'>
+                    <span style='font-size: 1.85em; font-weight: 800; color: #1e293b; line-height: 1.2;'>🏢 {comp['name']}</span>
+                    <a href='{main_url}' target='_blank' rel='noreferrer noopener' style='font-size: 0.9em; font-weight: 600; color: #1e3a8a; text-decoration: none;'>[公式HP ↗]</a>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with h_col2:
+            st.write("<div style='margin-top: 22px;'></div>", unsafe_allow_html=True)
+            btn_label = "記事を表示" if should_hide_articles else "記事を非表示"
+            btn_type = "primary" if should_hide_articles else "secondary"
+            if st.button(btn_label, key=f"btn_toggle_{group_prefix}_{comp['id']}", type=btn_type, use_container_width=True):
+                if should_hide_articles:
+                    if comp["id"] in st.session_state.hidden_companies:
+                        st.session_state.hidden_companies.remove(comp["id"])
+                    if has_filter and comp["id"] not in st.session_state.selected_filter_companies:
+                        st.session_state.selected_filter_companies.add(comp["id"])
+                else:
+                    st.session_state.hidden_companies.add(comp["id"])
+                    if comp["id"] in st.session_state.selected_filter_companies:
+                        st.session_state.selected_filter_companies.remove(comp["id"])
+                st.rerun()
+
+        if should_hide_articles:
+            st.write("")
+            continue
+
+        if not display_items:
+            mode_label = "公式発表" if current_mode == "official" else "ニュース"
+            st.info(f"📅 指定期間内の **{mode_label}** は **なし** です。")
+            st.write("")
+        else:
+            for item in display_items:
+                is_official = item["type"] == "公式発表"
+
+                if is_official:
+                    type_badge = (
+                        "<div style='display:inline-block; padding:3px 10px; background-color:#1e3a8a; "
+                        "color:#ffffff; font-size:0.8em; font-weight:700; border-radius:5px; margin-bottom:4px; "
+                        "box-shadow: 0 1px 2px rgba(0,0,0,0.15); letter-spacing:0.04em;'>📢 公式発表</div>"
+                    )
+
+                    title_link = item["url"]
+                    if comp["id"] == "jr-west":
+                        if item.get("pdf_url"):
+                            action_link = item["pdf_url"]
+                            action_caption = "掲載資料（PDF）を開く ↗"
+                            file_badge = "🟥 **[PDF資料]**"
+                        else:
+                            action_link = item["url"]
+                            action_caption = "掲載ページを開く ↗"
+                            file_badge = "🌐 **[Web発表]**"
+                    else:
+                        action_link = item.get("pdf_url") or item["url"]
+                        action_caption = "掲載資料（PDF）を開く ↗" if item.get("is_pdf") else "掲載ページを開く ↗"
+                        file_badge = "🟥 **[PDF資料]**" if item.get("is_pdf") else "🌐 **[Web発表]**"
+
+                else:
+                    type_badge = (
+                        "<div style='display:inline-block; padding:3px 9px; background-color:#f1f5f9; "
+                        "color:#475569; font-size:0.78em; font-weight:600; border-radius:5px; "
+                        "border:1px solid #cbd5e1; margin-bottom:4px;'>📰 ニュース（一般）</div>"
+                    )
+                    title_link = item["url"]
+                    action_link = item["url"]
+                    action_caption = "掲載ページを開く ↗"
+                    file_badge = "🌐 **[Webニュース]**"
+
+                with st.container(border=True):
+                    col_left, col_right = st.columns([1, 4])
+                    with col_left:
+                        st.write(f"📅 **{item['date']}**")
+                        st.markdown(type_badge, unsafe_allow_html=True)
+                        st.markdown(file_badge)
+                        st.caption(f"情報元: {item['source']}")
+                    with col_right:
+                        st.markdown(
+                            f"##### <a href='{title_link}' target='_blank' rel='noreferrer noopener'>{item['title']}</a>",
+                            unsafe_allow_html=True,
+                        )
+
+                        if not is_official and item.get("summary"):
+                            st.write(f"**主な内容:** {item['summary']}")
+
+                        st.markdown(
+                            f"<a href='{action_link}' target='_blank' rel='noreferrer noopener' class='link-action-btn'>🔗 {action_caption}</a>",
+                            unsafe_allow_html=True,
+                        )
+            st.write("")
