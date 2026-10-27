@@ -72,7 +72,7 @@ NAV_EXCLUDE_WORDS = {
 # セッションステートの初期化
 today = datetime.datetime.now(JST).date()
 
-# ★ 表示モード（"official": 公式発表のみ, "news": ニュースリリースのみ, None: 両方OFF）
+# ★ 表示モード（"official": 公式発表, "news": ニュース, None: 両方OFF）
 if "active_mode" not in st.session_state:
     st.session_state.active_mode = "official"  # デフォルトは公式発表（青色）
 if "period_days" not in st.session_state:
@@ -110,7 +110,7 @@ elif "reset" in st.query_params:
     st.query_params.clear()
 
 # ==========================================
-# 1. 会社マスタープール（東急電鉄表記修正・東京/大阪メトロ完全削除・海遊館なし）
+# 1. 会社マスタープール（東京メトロ・大阪メトロ完全削除、海遊館なし）
 # ==========================================
 COMPANY_POOL = {
     # --- JR各社 ---
@@ -243,7 +243,7 @@ COMPANY_POOL = {
         ],
         "query": "小田急電鉄",
     },
-    # ★ ご要望通り「東急電鉄（東急を含む）」に変更
+    # ★ 「東急電鉄（東急を含む）」
     "tokyu": {
         "id": "tokyu",
         "name": "東急電鉄（東急を含む）",
@@ -568,7 +568,6 @@ COMPANY_POOL = {
 
 JR_ORDER = ["jr-hokkaido", "jr-east", "jr-central", "jr-west", "jr-shikoku", "jr-kyushu"]
 
-# 東京メトロ・大阪メトロを完全削除した私鉄順序
 PRIVATE_ORDER = [
     "tobu", "seibu", "keisei", "keio", "odakyu",
     "tokyu", "keikyu", "sotetsu", "meitetsu",
@@ -576,7 +575,6 @@ PRIVATE_ORDER = [
     "nankai", "keihan", "hanshin", "hankyu", "hankyu-hanshin-hd", "nishitetsu"
 ]
 
-# 近鉄グループ17社（海遊館なし）
 KINTETSU_ORDER = [
     "kintetsu-ghd",
     "kintetsu-railway",
@@ -596,38 +594,6 @@ KINTETSU_ORDER = [
     "sanco-hd",
     "sanco"
 ]
-
-MEDIA_NAME_MAP = {
-    "asahi.com": "朝日新聞デジタル",
-    "nikkei.com": "日本経済新聞",
-    "yomiuri.co.jp": "読売新聞オンライン",
-    "mainichi.jp": "毎日新聞",
-    "sankei.com": "産経ニュース",
-    "yahoo.co.jp": "Yahoo!ニュース",
-    "trafficnews.jp": "乗りものニュース",
-    "tetsudo.com": "鉄道コム",
-    "railf.jp": "鉄道ファン (railf.jp)",
-    "news.mynavi.jp": "マイナビニュース",
-    "itmedia.co.jp": "ITmedia",
-    "toyokeizai.net": "東洋経済オンライン",
-    "diamond.jp": "ダイヤモンド・オンライン",
-    "kyodo.co.jp": "共同通信",
-    "nordot.app": "ノードット (共同通信系)",
-    "jiji.com": "時事通信",
-    "nhk.or.jp": "NHK NEWS",
-    "kobe-np.co.jp": "神戸新聞NEXT",
-    "kyoto-np.co.jp": "京都新聞",
-    "chunichi.co.jp": "中日新聞",
-    "tokyo-np.co.jp": "東京新聞",
-    "hokkaido-np.co.jp": "北海道新聞",
-    "nishinippon.co.jp": "西日本新聞",
-    "reuters.com": "ロイター",
-    "bloomberg.co.jp": "ブルームバーグ",
-    "fnn.jp": "FNNプライムオンライン",
-    "tv-asahi.co.jp": "テレ朝news",
-    "tbs.co.jp": "TBS NEWS DIG",
-    "ntv.co.jp": "日テレNEWS",
-}
 
 zen_to_han = str.maketrans("０１２３４５６７８９", "0123456789")
 
@@ -916,7 +882,6 @@ def parse_official_releases_strict(html_text, base_url, company_info, cutoff_dat
                     if not any(d in parsed_u.netloc.lower() for d in allowed_domains if d):
                         continue
 
-                # タイトルは絶対にブロック全体ではなく <a> タグ内のテキストから取得
                 clean_t = clean_extracted_title(a_m.group(2), company_info)
                 if not clean_t:
                     clean_block_txt = re.sub(r"<[^>]+>", " ", block)
@@ -1118,11 +1083,39 @@ def fetch_official_releases(company_info, max_days_back=21):
 
 
 # ==========================================
-# 6. 一般ニュース取得エンジン（完全復元版）
+# 6. 一般ニュース判定＆取得エンジン（緩やかなキーワード適合）
 # ==========================================
+def is_news_relevant(combined_text, company_id, company_name):
+    """会社ごとの緩やかなキーワード判定（近鉄、阪急などの取りこぼしを完全解消）"""
+    loose_keywords = {
+        "kintetsu-ghd": ["近鉄", "近鉄グループ", "近鉄ghd", "近鉄ホールディングス"],
+        "kintetsu-railway": ["近鉄", "近畿日本鉄道", "近鉄電車", "近鉄特急", "近鉄線"],
+        "hankyu": ["阪急", "阪急電車", "阪急電鉄", "阪急線"],
+        "hankyu-hanshin-hd": ["阪急阪神", "阪急", "阪神", "阪急阪神hd", "阪急阪神ホールディングス"],
+    }
+    if company_id in loose_keywords:
+        return any(k in combined_text for k in loose_keywords[company_id])
+
+    strict_companies = ["奈良交通", "近鉄バス", "三重交通", "志摩スペイン村", "あべのハルカス美術館"]
+    if company_name in strict_companies:
+        return company_name in combined_text
+
+    clean_comp = company_name.replace("（", "").replace("）", "")
+    kws = [clean_comp]
+    if "・" in clean_comp:
+        kws.extend(clean_comp.split("・"))
+    for suffix in ["鉄道", "電鉄", "電気鉄道", "旅客鉄道"]:
+        if clean_comp.endswith(suffix):
+            short = clean_comp[:-len(suffix)]
+            if len(short) >= 2:
+                kws.append(short)
+    return any(k.lower() in combined_text for k in kws)
+
+
 def fetch_general_news(query, company_dict, max_days_back=21):
     raw_results = []
     company_name = company_dict["name"]
+    company_id = company_dict["id"]
     encoded_q = urllib.parse.quote(query)
     today = datetime.date.today()
     cutoff_date = today - datetime.timedelta(days=max_days_back)
@@ -1199,22 +1192,9 @@ def fetch_general_news(query, company_dict, max_days_back=21):
             if any(ng in combined_text for ng in noise_keywords):
                 continue
 
-            # 各社の通称・別名判定（近鉄、阪急などの取りこぼしを完全解消）
-            strict_companies = ["奈良交通", "近鉄バス", "三重交通", "志摩スペイン村", "あべのハルカス美術館"]
-            if company_name in strict_companies:
-                if company_name not in clean_title:
-                    continue
-            else:
-                clean_comp = company_name.replace("（", "").replace("）", "")
-                comp_keywords = [clean_comp]
-                if "・" in clean_comp:
-                    comp_keywords.extend(clean_comp.split("・"))
-                if "近鉄" in clean_comp:
-                    comp_keywords.extend(["近鉄", "近畿日本鉄道"])
-                if "阪急" in clean_comp:
-                    comp_keywords.extend(["阪急", "阪急電車"])
-                if not any(kw.lower() in combined_text for kw in comp_keywords):
-                    continue
+            # ★ 緩やかなキーワード判定を適用
+            if not is_news_relevant(combined_text, company_id, company_name):
+                continue
 
             summary = clean_news_summary(clean_desc, clean_title, company_name)
 
@@ -1279,7 +1259,7 @@ def fetch_general_news(query, company_dict, max_days_back=21):
 # 7. 社別キャッシュエンジン
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_strict_direct_and_clean_v18"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_strict_direct_and_clean_v19"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
@@ -1353,7 +1333,7 @@ st.markdown(
 with st.sidebar:
     st.header("⚙️ 設定")
 
-    # --- 1. 表示モード切り替え（ご要望通りの排他トグル仕様） ---
+    # --- 1. 表示モード切り替え（ご要望通りの「公式発表」「ニュース」トグル仕様） ---
     st.write("**1. 表示モード切り替え**")
     btn_type_off = "primary" if st.session_state.active_mode == "official" else "secondary"
     btn_type_news = "primary" if st.session_state.active_mode == "news" else "secondary"
@@ -1367,7 +1347,7 @@ with st.sidebar:
                 st.session_state.active_mode = "official"  # 公式が青色になりニュースは灰色
             st.rerun()
     with col_m2:
-        if st.button("📰 ニュースリリース", key="btn_mode_news", type=btn_type_news, use_container_width=True):
+        if st.button("📰 ニュース", key="btn_mode_news", type=btn_type_news, use_container_width=True):
             if st.session_state.active_mode == "news":
                 st.session_state.active_mode = None  # ニュースが青色の時に押すと両方灰色
             else:
@@ -1782,17 +1762,17 @@ components.html(
 )
 
 # ==========================================
-# 12. 結果の描画（ご指定の完全絞り込み＆排他表示）
+# 12. 結果の描画（完全絞り込み＆排他表示）
 # ==========================================
 for group_prefix, group_title, comp_list in render_groups:
-    # ★ 会社選択時：選択された会社のみを抽出し、選択されていない会社は名前も完全に表示しない
+    # ★ 会社選択時：選択された会社のみを抽出し、選択されていない会社は名前も完全に非表示
     if has_filter:
         visible_comps = [c for c in comp_list if c["id"] in sel_set and c["id"] not in st.session_state.hidden_companies]
     else:
         visible_comps = [c for c in comp_list if c["id"] not in st.session_state.hidden_companies]
 
     if not visible_comps:
-        continue  # このグループに対象会社がなければ見出しごとスキップ
+        continue  # このグループに対象会社がなければ見出しごと非表示
 
     st.write("<br>", unsafe_allow_html=True)
     st.markdown(f"<div id='sec-{group_prefix}' style='scroll-margin-top: 15px;'></div>", unsafe_allow_html=True)
@@ -1846,10 +1826,10 @@ for group_prefix, group_title, comp_list in render_groups:
                 st.rerun()
 
         if st.session_state.active_mode is None:
-            st.info("💡 左側メニューから「📢 公式発表」または「📰 ニュースリリース」を選択してください。")
+            st.info("💡 左側メニューから「📢 公式発表」または「📰 ニュース」を選択してください。")
             st.write("")
         elif not display_items:
-            mode_str = "公式発表" if st.session_state.active_mode == "official" else "ニュースリリース"
+            mode_str = "公式発表" if st.session_state.active_mode == "official" else "ニュース"
             st.info(f"📅 指定期間内の **{mode_str}** は **なし** です。")
             st.write("")
         else:
@@ -1882,7 +1862,7 @@ for group_prefix, group_title, comp_list in render_groups:
                     type_badge = (
                         "<div style='display:inline-block; padding:3px 9px; background-color:#f1f5f9; "
                         "color:#475569; font-size:0.78em; font-weight:600; border-radius:5px; "
-                        "border:1px solid #cbd5e1; margin-bottom:4px;'>📰 ニュースリリース</div>"
+                        "border:1px solid #cbd5e1; margin-bottom:4px;'>📰 ニュース（一般）</div>"
                     )
                     title_link = item["url"]
                     action_link = item["url"]
