@@ -6,6 +6,7 @@ import html
 import http.cookiejar
 import re
 import ssl
+import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -27,7 +28,7 @@ st.title("🚆 全国大手鉄道会社 公式発表・ニュース 概要")
 st.caption("JR・大手私鉄・近鉄グループ各社の公式発表・最新ニュースを一覧表示します。")
 
 # ==========================================
-# 0. メディア優先度＆除外ブラックリスト
+# 0. メディア優先度＆ナビゲーション除外ブラックリスト
 # ==========================================
 MEDIA_PRIORITY = {
     "NHK NEWS": 100, "日本経済新聞": 95, "読売新聞オンライン": 90, "朝日新聞デジタル": 90,
@@ -154,7 +155,7 @@ COMPANY_POOL = {
     "odakyu": {
         "id": "odakyu", "name": "小田急電鉄", "top_url": "https://www.odakyu.jp/",
         "official_domains": ["odakyu.jp"],
-        "urls": ["https://www.odakyu.jp/", "https://www.odakyu.jp/company/about/news/", "https://www.odakyu.jp/news/"],
+        "urls": ["https://www.odakyu.jp/company/about/news/", "https://www.odakyu.jp/news/", "https://www.odakyu.jp/"],
         "query": "小田急電鉄",
     },
     "tokyu": {
@@ -202,7 +203,7 @@ COMPANY_POOL = {
     "hankyu": {
         "id": "hankyu", "name": "阪急電鉄", "top_url": "https://www.hankyu.co.jp/",
         "official_domains": ["hankyu.co.jp", "hankyu-hanshin.co.jp"],
-        "urls": ["https://www.hankyu.co.jp/company/news/index.html", "https://www.hankyu.co.jp/company/news/", "https://www.hankyu.co.jp/release/", "https://www.hankyu.co.jp/"],
+        "urls": ["https://www.hankyu.co.jp/company/news/index.html", "https://www.hankyu.co.jp/company/news/", "https://www.hankyu-hanshin.co.jp/release/", "https://www.hankyu.co.jp/"],
         "query": "阪急電鉄 OR 阪急電車",
     },
     "hankyu-hanshin-hd": {
@@ -257,7 +258,7 @@ COMPANY_POOL = {
     "kintetsu-retailing": {
         "id": "kintetsu-retailing", "name": "近鉄リテーリング", "top_url": "https://knt-rt.co.jp/",
         "official_domains": ["knt-rt.co.jp"],
-        "urls": ["https://knt-rt.co.jp/", "https://knt-rt.co.jp/news/"],
+        "urls": ["https://knt-rt.co.jp/", "https://knt-rt.co.jp/news/", "https://knt-rt.co.jp/"],
         "query": '"近鉄リテーリング"',
     },
     "kinsho-store": {
@@ -385,6 +386,7 @@ def parse_date_text(raw_text, current_year):
     if not raw_text:
         return None
 
+    # datetime属性の検出
     attr_match = re.search(r'(?:datetime|data-date)=["\']((?:19|20)\d{2}[-/\.][0-9]{1,2}[-/\.][0-9]{1,2})', raw_text, re.IGNORECASE)
     if attr_match:
         try:
@@ -396,6 +398,7 @@ def parse_date_text(raw_text, current_year):
     text = re.sub(r"<[^>]+>", " ", raw_text)
     text = text.translate(zen_to_han)
 
+    # 1. 令和表記
     m_reiwa = re.search(r"令和\s*([0-9]+|元)\s*年\s*([0-9]{1,2})\s*月\s*([0-9]{1,2})\s*日", text)
     if m_reiwa:
         y_val = 1 if m_reiwa.group(1) == "元" else int(m_reiwa.group(1))
@@ -404,6 +407,7 @@ def parse_date_text(raw_text, current_year):
         except ValueError:
             pass
 
+    # 2. 西暦表記（2026/10/28, 2026.10.28, 2026-10-28, 2026年10月28日）
     m_seireki = re.search(r"((?:19|20)\d{2})\s*[年\./\-]\s*([0-9]{1,2})\s*[月\./\-]\s*([0-9]{1,2})\s*日?", text)
     if m_seireki:
         try:
@@ -411,6 +415,7 @@ def parse_date_text(raw_text, current_year):
         except ValueError:
             pass
 
+    # 3. 月日のみ表記
     if not re.search(r"(?:19|20)\d{2}", text):
         m_md = re.search(r"(?<!\d)(1[0-2]|0?[1-9])\s*[月\./\-]\s*(3[01]|[12][0-9]|0?[1-9])\s*日?(?!\d)", text)
         if m_md:
@@ -422,21 +427,39 @@ def parse_date_text(raw_text, current_year):
     return None
 
 
-def remove_leading_date(text):
-    text = re.sub(r'^(?:(?:19|20)\d{2}[年\.\/\-]\s*\d{1,2}[月\.\/\-]\s*\d{1,2}日?)\s*[:：|｜・\s\-]*', '', text)
-    text = re.sub(r'^(?:(?:令和|平成)\s*(?:\d+|元)年\s*\d{1,2}月\s*\d{1,2}日)\s*[:：|｜・\s\-]*', '', text)
-    text = re.sub(r'^[\[【(](?:(?:19|20)\d{2}[年\.\/\-]\s*\d{1,2}[月\.\/\-]\s*\d{1,2}日?)[\]】)]\s*', '', text)
-    return text.strip()
-
-
-def clean_extracted_title(raw_title, company_info):
+def clean_title_advanced(raw_title, company_info):
+    """タイトルをサニタイズ（日付・ジャンル・残骸・PDFサイズを徹底除去）"""
     t = re.sub(r"<[^>]*>", " ", raw_title)
     t = html.unescape(t)
-    t = remove_leading_date(t)
+    t = re.sub(r'\s+', ' ', t).strip()
 
-    t = re.sub(r"^(?:東急電鉄|京急電鉄|近畿日本鉄道|プレスリリース|ニュースリリース|お知らせ|PRESS\s*RELEASE|NEWS|重要|電鉄|グループ)\s*", "", t.strip(), flags=re.IGNORECASE)
-    t = remove_leading_date(t)
+    # 1. 末尾の [PDF: 1.6MB] や [PDF 1.6MB] [1.2MB] [PDF:〇〇] などを除去
+    t = re.sub(r'[\[［【\(（]\s*(?:PDF\s*[:：]?\s*)?[0-9\.]+\s*(?:[KMG]B|キロバイト|メガバイト)\s*[\]］】\)）]\s*$', '', t, flags=re.I)
+    t = re.sub(r'[\[［【\(（]\s*PDF\s*[\]］】\)）]\s*$', '', t, flags=re.I)
+    t = re.sub(r'\.pdf\s*$', '', t, flags=re.I)
 
+    # 2. 英語日付の除去 (相鉄の October 28, 2026 など)
+    t = re.sub(r'^(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+(?:19|20)\d{2}\s*[:：|｜・\s\-]*', '', t, flags=re.I)
+
+    # 3. 日本語日付・西暦・元号の除去（タイトル先頭）
+    t = re.sub(r'^(?:(?:19|20)\d{2}[年\.\/\-]\s*\d{1,2}[月\.\/\-]\s*\d{1,2}日?)\s*[:：|｜・\s\-]*', '', t)
+    t = re.sub(r'^(?:(?:令和|平成)\s*(?:\d+|元)年\s*\d{1,2}月\s*\d{1,2}日)\s*[:：|｜・\s\-]*', '', t)
+    t = re.sub(r'^[\[【(](?:(?:19|20)\d{2}[年\.\/\-]\s*\d{1,2}[月\.\/\-]\s*\d{1,2}日?)[\]】)]\s*', '', t)
+
+    # 4. JR九州のようなナビゲーション残骸の除去（月別ナビリンクの塊）
+    t = re.sub(r'^.*?11月\s*12月\s*(?:(?:19|20)\d{2}年\d{1,2}月\d{1,2}日)?\s*', '', t)
+    t = re.sub(r'^(?:新着情報|ニュースリリース|お知らせ|イベント情報|IR情報|プレスリリース)\s*', '', t)
+
+    # 5. ジャンル・カテゴリ・特定グループ会社表記の除去
+    # 京阪の「流通 ㈱京阪流通システムズ」
+    t = re.sub(r'^流通\s+(?:㈱|株式会社)?京阪流通システムズ\s+', '', t)
+    # 先頭のジャンル単語（相鉄の「バス」、JR九州の「建設」「運輸サービス」など）
+    t = re.sub(r'^(?:建設|運輸サービス|運輸|バス|電車|鉄道|流通|不動産|ホテル|レジャー|リテール|グループ|その他)\s*', '', t)
+
+    # 6. 相鉄の「バス026年...」のような欠損年の修復
+    t = re.sub(r'^026年', '2026年', t)
+
+    # 7. 各社専用クレンジング
     if company_info["id"] == "kinsho-store":
         t = re.sub(r'(?:NEW|新着|お知らせ|重要|\.pdf|\.PDF)+', '', t).strip()
         t = re.sub(r'^[【\[（\(].*?[】\]）\)]', '', t).strip()
@@ -452,6 +475,7 @@ def clean_extracted_title(raw_title, company_info):
 
     t = re.sub(r"\s+", " ", t).strip()
 
+    # ナビゲーション固定メニューや短文単語の完全除外
     t_lower = t.lower()
     if t_lower in NAV_EXCLUDE_WORDS or any(w == t for w in NAV_EXCLUDE_WORDS):
         return ""
@@ -545,7 +569,7 @@ def fetch_url_html(url, referer, headers, ctx):
 
 
 # ==========================================
-# 4. 厳格ペアリング公式発表抽出エンジン
+# 4. 厳格ペアリング公式発表抽出エンジン（JR九州・小田急の誤判定を完全解消）
 # ==========================================
 def parse_official_releases_strict(html_text, base_url, company_info, cutoff_date, today, current_year, seen_urls):
     results = []
@@ -566,7 +590,7 @@ def parse_official_releases_strict(html_text, base_url, company_info, cutoff_dat
                 d_str = d_m.group(1) if d_m else ""
                 item_date = parse_date_text(d_str, current_year)
                 if item_date and (cutoff_date <= item_date <= today) and l not in seen_urls:
-                    clean_t = clean_extracted_title(t, company_info)
+                    clean_t = clean_title_advanced(t, company_info)
                     if clean_t:
                         seen_urls.add(l)
                         results.append({
@@ -586,99 +610,17 @@ def parse_official_releases_strict(html_text, base_url, company_info, cutoff_dat
     clean_html = re.sub(r"<style.*?>.*?</style>", "", clean_html, flags=re.DOTALL | re.IGNORECASE)
     clean_html = re.sub(r"<svg.*?>.*?</svg>", "", clean_html, flags=re.DOTALL | re.IGNORECASE)
 
-    # パターン1: 構造ブロック単位（行 <tr>、リスト <li>、カード <article>）
-    block_patterns = [
-        r'(<tr[^>]*>.*?</tr>)',
-        r'(<li[^>]*>.*?</li>)',
-        r'(<article[^>]*>.*?</article>)',
-    ]
+    # ナビゲーション・月別アーカイブ等の誤取得源を事前除去
+    clean_html = re.sub(r'<nav.*?>.*?</nav>', '', clean_html, flags=re.DOTALL | re.IGNORECASE)
 
-    for b_pat in block_patterns:
-        for block in re.findall(b_pat, clean_html, flags=re.DOTALL | re.IGNORECASE):
-            d_val = parse_date_text(block, current_year)
-            if not d_val or not (cutoff_date <= d_val <= today):
-                continue
-
-            for a_m in re.finditer(r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', block, flags=re.DOTALL | re.IGNORECASE):
-                href = a_m.group(1).strip().replace(" ", "").replace("\r", "").replace("\n", "").replace("\t", "")
-                if not href or href.startswith(("javascript:", "#", "mailto:", "tel:")):
-                    continue
-
-                full_url = urllib.parse.urljoin(base_url, href)
-                if full_url in seen_urls:
-                    continue
-
-                if not is_jr_east:
-                    parsed_u = urllib.parse.urlparse(full_url)
-                    if not any(d in parsed_u.netloc.lower() for d in allowed_domains if d):
-                        continue
-
-                clean_t = clean_extracted_title(a_m.group(2), company_info)
-                if not clean_t:
-                    clean_block_txt = re.sub(r"<[^>]+>", " ", block)
-                    clean_t = clean_extracted_title(clean_block_txt, company_info)
-
-                if not clean_t:
-                    continue
-
-                seen_urls.add(full_url)
-                is_pdf = full_url.lower().split('?')[0].endswith(".pdf")
-                results.append({
-                    "date": d_val,
-                    "type": "公式発表",
-                    "title": clean_t[:130],
-                    "url": full_url,
-                    "pdf_url": full_url if is_pdf else None,
-                    "source": company_info["name"] + " 公式発表",
-                    "is_pdf": is_pdf,
-                })
-
-    # パターン2: 近鉄各社などの <dt>日付</dt><dd>リンク</dd> 定義リスト直結構造
-    dt_dd_pattern = r'<dt[^>]*>(.*?)</dt>\s*<dd[^>]*>(.*?)</dd>'
-    for m in re.finditer(dt_dd_pattern, clean_html, flags=re.DOTALL | re.IGNORECASE):
-        dt_txt = m.group(1)
-        dd_txt = m.group(2)
-        d_val = parse_date_text(dt_txt, current_year)
-        if not d_val or not (cutoff_date <= d_val <= today):
+    # 3. 各 <a> タグごとに、その記事独自の日付を厳格に取得（巨大ブロック走査の完全廃止）
+    a_matches = list(re.finditer(r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', clean_html, flags=re.IGNORECASE | re.DOTALL))
+    for m in a_matches:
+        raw_href = m.group(1).strip().replace(" ", "").replace("\r", "").replace("\n", "").replace("\t", "")
+        if not raw_href or raw_href.startswith(("javascript:", "#", "mailto:", "tel:")):
             continue
 
-        for a_m in re.finditer(r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', dd_txt, flags=re.DOTALL | re.IGNORECASE):
-            href = a_m.group(1).strip().replace(" ", "").replace("\r", "").replace("\n", "").replace("\t", "")
-            if not href or href.startswith(("javascript:", "#", "mailto:", "tel:")):
-                continue
-
-            full_url = urllib.parse.urljoin(base_url, href)
-            if full_url in seen_urls:
-                continue
-
-            clean_t = clean_extracted_title(a_m.group(2), company_info)
-            if not clean_t:
-                continue
-
-            seen_urls.add(full_url)
-            is_pdf = full_url.lower().split('?')[0].endswith(".pdf")
-            results.append({
-                "date": d_val,
-                "type": "公式発表",
-                "title": clean_t[:130],
-                "url": full_url,
-                "pdf_url": full_url if is_pdf else None,
-                "source": company_info["name"] + " 公式発表",
-                "is_pdf": is_pdf,
-            })
-
-    # パターン3: カード型リンク内包日付（東急、京急等）
-    p_inside = r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>([\s\S]*?)</a>'
-    for m in re.finditer(p_inside, clean_html, re.IGNORECASE):
-        href = m.group(1).strip().replace(" ", "").replace("\r", "").replace("\n", "").replace("\t", "")
-        if not href or href.startswith(("javascript:", "#", "mailto:", "tel:")):
-            continue
-        body = m.group(2)
-        d_val = parse_date_text(body, current_year)
-        if not d_val or not (cutoff_date <= d_val <= today):
-            continue
-
-        full_url = urllib.parse.urljoin(base_url, href)
+        full_url = urllib.parse.urljoin(base_url, raw_href)
         if full_url in seen_urls:
             continue
 
@@ -687,7 +629,47 @@ def parse_official_releases_strict(html_text, base_url, company_info, cutoff_dat
             if not any(d in parsed_u.netloc.lower() for d in allowed_domains if d):
                 continue
 
-        clean_t = clean_extracted_title(body, company_info)
+        # 過去年リンクの排除
+        if re.search(r'/(?:20[01]\d|202[0-5])/', full_url):
+            continue
+
+        # 阪急電鉄：阪急阪神HD一覧からの阪神記事混入を排除
+        if cid == "hankyu" and "hankyu-hanshin.co.jp" in full_url:
+            surrounding = clean_html[max(0, m.start() - 250) : min(len(clean_html), m.end() + 250)]
+            if "阪神" in surrounding and "阪急" not in surrounding:
+                continue
+
+        body = m.group(2)
+        start_pos = m.start()
+        end_pos = m.end()
+
+        # A. リンク内部から日付探索（東急・カード型）
+        d_val = parse_date_text(body, current_year)
+
+        # B. リンク直前400文字から日付探索（最も近いもの＝最後のマッチ）
+        if not d_val:
+            before_text = clean_html[max(0, start_pos - 400) : start_pos]
+            m_dates = list(re.finditer(r'((?:19|20)\d{2}\s*[年\./\-]\s*[0-9]{1,2}\s*[月\./\-]\s*[0-9]{1,2}|令和\s*(?:\d+|元)年\s*[0-9]{1,2}月\s*[0-9]{1,2}日)', before_text))
+            if m_dates:
+                last_m = m_dates[-1]
+                between = before_text[last_m.end():]
+                if '</a>' not in between:  # 前の記事の日付を奪わない
+                    d_val = parse_date_text(last_m.group(0), current_year)
+
+        # C. リンク直後200文字から日付探索（テーブル構造など）
+        if not d_val:
+            after_text = clean_html[end_pos : min(len(clean_html), end_pos + 200)]
+            m_dates = list(re.finditer(r'((?:19|20)\d{2}\s*[年\./\-]\s*[0-9]{1,2}\s*[月\./\-]\s*[0-9]{1,2}|令和\s*(?:\d+|元)年\s*[0-9]{1,2}月\s*[0-9]{1,2}日)', after_text))
+            if m_dates:
+                first_m = m_dates[0]
+                between = after_text[:first_m.start()]
+                if '<a ' not in between:
+                    d_val = parse_date_text(first_m.group(0), current_year)
+
+        if not d_val or not (cutoff_date <= d_val <= today):
+            continue
+
+        clean_t = clean_title_advanced(body, company_info)
         if not clean_t:
             continue
 
@@ -788,7 +770,7 @@ def fetch_official_releases(company_info, max_days_back=21):
                             pass
 
                     if i_date and (cutoff_date <= i_date <= today):
-                        clean_t = clean_extracted_title(t_el.text or "", company_info)
+                        clean_t = clean_title_advanced(t_el.text or "", company_info)
                         if not clean_t:
                             continue
                         seen_urls.add(l)
@@ -814,7 +796,7 @@ def fetch_official_releases(company_info, max_days_back=21):
 
 
 # ==========================================
-# 6. 一般ニュース判定＆取得エンジン（完全安定復元版）
+# 6. 一般ニュース判定＆取得エンジン（完全復元版）
 # ==========================================
 def extract_company_keywords(company_name):
     """会社名から検索マッチ用のキーワード群を正確に生成（カッコ処理バグ解消）"""
@@ -877,8 +859,7 @@ def fetch_general_news(query, company_name, max_days_back=21):
                 u_match = re.search(r'[?&]u=a1([a-zA-Z0-9_\-]+)', link)
                 if u_match:
                     try:
-                        b64_str = u_match.group(1)
-                        b64_str += '=' * (-len(b64_str) % 4)
+                        b64_str = u_match.group(1) + '=' * (-len(u_match.group(1)) % 4)
                         decoded_bytes = base64.urlsafe_b64decode(b64_str)
                         real_url = decoded_bytes.decode('utf-8', errors='ignore')
                         if real_url.startswith("http"):
@@ -950,8 +931,8 @@ def fetch_general_news(query, company_name, max_days_back=21):
                     source_name = media_label
                     break
 
-            if not source_name or source_name.lower() in ["bing", "bing.com"]:
-                source_name = domain if "bing" not in domain else "ニュース報道"
+            if not source_name:
+                source_name = "ニュース報道"
 
             priority = MEDIA_PRIORITY.get(source_name, 10)
 
@@ -986,7 +967,7 @@ def fetch_general_news(query, company_name, max_days_back=21):
 # 7. 社別キャッシュエンジン
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_stable_general_and_strict_official_v20"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_strict_direct_and_clean_v21"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
@@ -1060,7 +1041,7 @@ st.markdown(
 with st.sidebar:
     st.header("⚙️ 設定")
 
-    # --- 1. 表示モード切り替え（ご要望通りの「公式発表」「ニュース」トグル仕様） ---
+    # --- 1. 表示モード切り替え（公式発表・ニュースの排他トグル仕様） ---
     st.write("**1. 表示モード切り替え**")
     btn_type_off = "primary" if st.session_state.active_mode == "official" else "secondary"
     btn_type_news = "primary" if st.session_state.active_mode == "news" else "secondary"
