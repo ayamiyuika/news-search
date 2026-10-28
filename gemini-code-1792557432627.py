@@ -91,7 +91,7 @@ elif "reset" in st.query_params:
     st.query_params.clear()
 
 # ==========================================
-# 1. 会社マスタープール（昨日動作版クエリ復元＋近鉄GHD等拡張）
+# 1. 会社マスタープール（昨日の高精度クエリ復元＋近鉄GHD等拡張）
 # ==========================================
 COMPANY_POOL = {
     # --- JR各社 ---
@@ -166,6 +166,7 @@ COMPANY_POOL = {
         "urls": ["https://www.odakyu.jp/company/about/news/", "https://www.odakyu.jp/news/", "https://www.odakyu.jp/"],
         "query": "小田急電鉄",
     },
+    # ★ 「東急電鉄（東急を含む）」
     "tokyu": {
         "id": "tokyu", "name": "東急電鉄（東急を含む）", "top_url": "https://www.tokyu.co.jp/",
         "official_domains": ["tokyu.co.jp"],
@@ -208,6 +209,7 @@ COMPANY_POOL = {
         "urls": ["https://www.hanshin.co.jp/press/", "https://www.hanshin.co.jp/release/", "https://www.hanshin.co.jp/"],
         "query": "阪神電気鉄道 OR 阪神電車",
     },
+    # ★ 阪急電鉄（リリースページ優先）
     "hankyu": {
         "id": "hankyu", "name": "阪急電鉄", "top_url": "https://www.hankyu.co.jp/",
         "official_domains": ["hankyu.co.jp", "hankyu-hanshin.co.jp"],
@@ -218,6 +220,7 @@ COMPANY_POOL = {
         ],
         "query": "阪急電鉄 OR 阪急電車",
     },
+    # ★ 阪急阪神HD（リリースページ優先）
     "hankyu-hanshin-hd": {
         "id": "hankyu-hanshin-hd", "name": "阪急阪神ホールディングス", "top_url": "https://www.hankyu-hanshin.co.jp/",
         "official_domains": ["hankyu-hanshin.co.jp"],
@@ -227,6 +230,7 @@ COMPANY_POOL = {
         ],
         "query": "阪急阪神ホールディングス OR \"阪急阪神HD\"",
     },
+    # ★ 西日本鉄道（リリースページ優先・安定復帰）
     "nishitetsu": {
         "id": "nishitetsu", "name": "西日本鉄道", "top_url": "https://www.nishitetsu.co.jp/",
         "official_domains": ["nishitetsu.co.jp"],
@@ -238,7 +242,7 @@ COMPANY_POOL = {
         "query": "西日本鉄道 OR 西鉄",
     },
     # --- 近鉄グループ（17社・海遊館なし） ---
-    # ★ 近鉄GHD（近鉄グループHD、近鉄等を含め子会社ニュースも捕捉）
+    # ★ 近鉄GHD（子会社・グループ報道も確実にキャッチ）
     "kintetsu-ghd": {
         "id": "kintetsu-ghd", "name": "近鉄GHD", "top_url": "https://www.kintetsu-g-hd.co.jp/",
         "official_domains": ["kintetsu-g-hd.co.jp"],
@@ -259,7 +263,7 @@ COMPANY_POOL = {
             "https://www.kintetsu.co.jp/all_news/",
             "https://www.kintetsu.co.jp/",
         ],
-        "query": "近畿日本鉄道 OR 近鉄電車 OR 近鉄特急 OR 近鉄",
+        "query": "近畿日本鉄道 OR 近鉄電車 OR 近鉄特急 OR 近鉄線 OR 近鉄",
     },
     "kintetsu-fudosan": {
         "id": "kintetsu-fudosan", "name": "近鉄不動産", "top_url": "https://www.kintetsu-re.co.jp/",
@@ -303,6 +307,7 @@ COMPANY_POOL = {
         "urls": ["https://www.miyakohotels.ne.jp/newsrelease/", "https://www.miyakohotels.ne.jp/information/", "https://www.miyakohotels.ne.jp/"],
         "query": '"近鉄・都ホテルズ" OR "都ホテルズ＆リゾーツ" OR "都ホテル"',
     },
+    # ★ KNT-CT（リリースページ優先・安定復帰）
     "knt-ct": {
         "id": "knt-ct", "name": "KNT-CTホールディングス", "top_url": "https://www.kntcthd.co.jp/",
         "official_domains": ["kntcthd.co.jp"],
@@ -822,40 +827,73 @@ def fetch_official_releases(company_info, max_days_back=21):
 
 
 # ==========================================
-# 6. 一般ニュース取得エンジン（Google News遮断対策・一次ソース直リンク復元）
+# 6. 一般ニュース取得エンジン（Google News直リンク自動復元・昨日の完全復元版）
 # ==========================================
-def resolve_news_link(raw_link):
-    """Bingの暗号化リンクから、新聞社・メディアの実際の掲載URLを復元"""
-    if not raw_link:
-        return ""
-    # パターン1: u=a1... Base64エンコード
-    u_match = re.search(r'[?&]u=a1([a-zA-Z0-9_\-]+)', raw_link)
-    if u_match:
-        try:
-            b64_str = u_match.group(1)
+def resolve_news_url(link, source_domain=""):
+    """
+    Google News RSSのラッパーURL (https://news.google.com/rss/articles/...) や
+    BingのラッパーURLから、新聞社・メディアの実際の掲載ページ直リンクを復元する。
+    """
+    if not link:
+        return source_domain or ""
+
+    # 1. Bing News のラッパーURLの復元
+    if "bing.com" in link:
+        u_match = re.search(r'[?&]u=a1([a-zA-Z0-9_\-]+)', link)
+        if u_match:
+            try:
+                b64_str = u_match.group(1) + '=' * (-len(u_match.group(1)) % 4)
+                decoded = base64.urlsafe_b64decode(b64_str).decode('utf-8', errors='ignore')
+                if decoded.startswith("http"):
+                    return decoded
+            except Exception:
+                pass
+        url_match = re.search(r'[?&]url=([^&]+)', link)
+        if url_match:
+            try:
+                decoded = urllib.parse.unquote(url_match.group(1))
+                if decoded.startswith("http"):
+                    return decoded
+            except Exception:
+                pass
+
+    # 2. Google News RSS のラッパーURLの復元（一次ソース直リンク化）
+    if "news.google.com" in link:
+        m = re.search(r'(?:articles|read)/([a-zA-Z0-9_\-]+)', link)
+        if m:
+            b64_str = m.group(1)
             b64_str += '=' * (-len(b64_str) % 4)
-            decoded_bytes = base64.urlsafe_b64decode(b64_str)
-            real_url = decoded_bytes.decode('utf-8', errors='ignore')
-            if real_url.startswith("http"):
-                return real_url
-        except Exception:
-            pass
-    # パターン2: url=... URLエンコード
-    url_match = re.search(r'[?&]url=([^&]+)', raw_link)
-    if url_match:
-        try:
-            real_url = urllib.parse.unquote(url_match.group(1))
-            if real_url.startswith("http"):
-                return real_url
-        except Exception:
-            pass
-    return raw_link
+            try:
+                raw = base64.urlsafe_b64decode(b64_str)
+                pos = raw.find(b'http')
+                if pos != -1:
+                    if pos > 0:
+                        length = raw[pos - 1]
+                        if 10 < length < 250 and (pos + length) <= len(raw):
+                            cand = raw[pos : pos + length].decode('utf-8', errors='ignore')
+                            if "google.com" not in cand and "." in cand:
+                                return cand
+                    urls = re.findall(rb'https?://[a-zA-Z0-9_\-\./\?%&=+#~:;@]+', raw)
+                    for u in urls:
+                        cand = u.decode('utf-8', errors='ignore')
+                        cand = re.sub(r'[\x00-\x1f\x7f-\xff]+.*$', '', cand)
+                        cand = cand.rstrip('0123456789') if cand.endswith(('0', '1')) and not cand.endswith(('.html', '.htm', '/')) else cand
+                        if "google.com" not in cand and "." in cand:
+                            return cand
+            except Exception:
+                pass
+
+        if source_domain and "google.com" not in source_domain:
+            return source_domain
+
+    return link
 
 
 def fetch_general_news(query, company_dict, max_days_back=21):
     """
-    昨日の gemini-code-1793070457686.py をベースに、
-    Google News 遮断を回避して一次ニュースサイトの直リンクのみを確実に取得
+    昨日の gemini-code-1793070457686.py をベースに完全復元。
+    Google News RSS ＋ Bing News RSS の二重系で過剰な本文判定を行わず素直に採用し、
+    Google News リンクを一次ソース直リンクへ自動復元。
     """
     results = []
     company_name = company_dict["name"]
@@ -869,121 +907,127 @@ def fetch_general_news(query, company_dict, max_days_back=21):
         "Accept": "application/rss+xml, application/xml, text/xml, */*",
     }
 
-    # 一次ニュースサイト直リンクを確実に復元できる Bing News RSS を採用
-    rss_url = f"https://www.bing.com/news/search?q={encoded_q}&format=rss&mkt=ja-JP"
+    # 昨日の gemini-code-1793070457686.py と全く同じ二重系エンドポイント
+    endpoints = [
+        f"https://news.google.com/rss/search?q={encoded_q}&hl=ja&gl=JP&ceid=JP:ja",
+        f"https://www.bing.com/news/search?q={encoded_q}&format=rss&mkt=ja-JP"
+    ]
+
     seen_links = set()
 
-    try:
-        req = urllib.request.Request(rss_url, headers=headers)
-        with urllib.request.urlopen(req, context=ctx, timeout=8) as res:
-            xml_data = res.read()
-            if xml_data[:2] == b"\x1f\x8b":
-                xml_data = gzip.decompress(xml_data)
+    for rss_url in endpoints:
+        try:
+            req = urllib.request.Request(rss_url, headers=headers)
+            with urllib.request.urlopen(req, context=ctx, timeout=8) as res:
+                xml_data = res.read()
+                if xml_data[:2] == b"\x1f\x8b":
+                    xml_data = gzip.decompress(xml_data)
 
-        root = ET.fromstring(xml_data)
-        for item in root.findall(".//item"):
-            title_el = item.find("title")
-            link_el = item.find("link")
-            pubdate_el = item.find("pubDate")
-            desc_el = item.find("description")
+            root = ET.fromstring(xml_data)
+            for item in root.findall(".//item"):
+                title_el = item.find("title")
+                link_el = item.find("link")
+                pubdate_el = item.find("pubDate")
+                desc_el = item.find("description")
 
-            if title_el is None or link_el is None:
-                continue
-
-            raw_title = title_el.text or ""
-            raw_link = (link_el.text or "").strip()
-            pubdate_str = pubdate_el.text if pubdate_el is not None else ""
-            desc = desc_el.text if desc_el is not None else ""
-
-            if not raw_link:
-                continue
-
-            # ★ データソース（一次情報提供元）のURLに直接復元（Google News遮断完全回避）
-            link = resolve_news_link(raw_link)
-            if not link or "google.com" in link or "bing.com" in link:
-                continue
-
-            if link in seen_links:
-                continue
-
-            item_date = None
-            if pubdate_str:
-                try:
-                    dt = email.utils.parsedate_to_datetime(pubdate_str)
-                    jst = dt.astimezone(JST)
-                    item_date = jst.date()
-                except Exception:
-                    pass
-
-            if not item_date or not (cutoff_date <= item_date <= today):
-                continue
-
-            clean_title = raw_title.strip()
-            clean_desc = re.sub(r"<[^>]+>", " ", desc)
-            clean_desc = html.unescape(clean_desc)
-            clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
-
-            combined_text = (clean_title + " " + clean_desc).lower()
-
-            # 警察・事件・プレゼント等ノイズ除外
-            noise_keywords = [
-                "招待券", "プレゼント", "懸賞", "合唱団", "定期演奏会",
-                "警察weekly", "県警weekly", "現行犯逮捕", "酒酔い運転", "ひき逃げ",
-                "安全運転管理者", "死亡事故", "容疑で逮捕", "書類送検"
-            ]
-            if any(ng in combined_text for ng in noise_keywords):
-                continue
-
-            # 厳格指定会社のみタイトル社名チェック（ノイズ防止）
-            strict_companies = ["奈良交通", "近鉄バス", "三重交通", "志摩スペイン村", "あべのハルカス美術館"]
-            if company_name in strict_companies:
-                if company_name not in clean_title:
+                if title_el is None or link_el is None:
                     continue
 
-            # 昨日の gemini-code-1793070457686.py 同様、検索クエリヒット結果を素直に採用
-            seen_links.add(link)
-            summary = clean_news_summary(clean_desc, clean_title, company_name)
+                raw_title = title_el.text or ""
+                raw_link = (link_el.text or "").strip()
+                pubdate_str = pubdate_el.text if pubdate_el is not None else ""
+                desc = desc_el.text if desc_el is not None else ""
 
-            source_name = ""
-            source_el = item.find("source")
-            if source_el is not None and source_el.text:
-                source_name = source_el.text.strip()
+                if not raw_link:
+                    continue
 
-            if not source_name and " - " in clean_title:
-                parts = clean_title.rsplit(" - ", 1)
-                cand = parts[1].strip()
-                clean_title = parts[0].strip()
-                if cand:
-                    source_name = cand
+                source_name = ""
+                source_domain = ""
+                source_el = item.find("source")
+                if source_el is not None:
+                    if source_el.text:
+                        source_name = source_el.text.strip()
+                    if "url" in source_el.attrib:
+                        source_domain = source_el.attrib["url"].strip()
 
-            parsed_url = urllib.parse.urlparse(link)
-            domain = parsed_url.netloc.lower().replace("www.", "")
+                # ★ Google News等のラッパーURLから、新聞社・メディアの掲載直リンクを復元
+                real_link = resolve_news_url(raw_link, source_domain)
+                if not real_link or "news.google.com" in real_link:
+                    continue
 
-            for domain_key, media_label in MEDIA_NAME_MAP.items():
-                if domain_key in domain:
-                    source_name = media_label
-                    break
+                if real_link in seen_links:
+                    continue
 
-            if not source_name:
-                source_name = domain
+                item_date = None
+                if pubdate_str:
+                    try:
+                        dt = email.utils.parsedate_to_datetime(pubdate_str)
+                        jst = dt.astimezone(JST)
+                        item_date = jst.date()
+                    except Exception:
+                        pass
 
-            priority = MEDIA_PRIORITY.get(source_name, 10)
+                if not item_date or not (cutoff_date <= item_date <= today):
+                    continue
 
-            results.append({
-                "date": item_date,
-                "type": "ニュース（一般サイト）",
-                "title": clean_title,
-                "summary": summary,
-                "url": link,
-                "pdf_url": None,
-                "source": source_name,
-                "is_pdf": False,
-                "priority": priority,
-            })
-    except Exception:
-        pass
+                clean_title = raw_title.strip()
+                clean_desc = re.sub(r"<[^>]+>", " ", desc)
+                clean_desc = html.unescape(clean_desc)
+                clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
 
-    # 重複排除
+                combined_text = (clean_title + " " + clean_desc).lower()
+
+                # 明らかな警察・事件・プレゼント系ノイズのみ除外
+                noise_keywords = [
+                    "招待券", "プレゼント", "懸賞", "合唱団", "定期演奏会",
+                    "警察weekly", "県警weekly", "現行犯逮捕", "酒酔い運転", "ひき逃げ",
+                    "安全運転管理者", "死亡事故", "容疑で逮捕", "書類送検"
+                ]
+                if any(ng in combined_text for ng in noise_keywords):
+                    continue
+
+                # 昨日の gemini-code-1793070457686.py 同様、検索クエリヒット結果を素直に採用
+                seen_links.add(real_link)
+                summary = clean_news_summary(clean_desc, clean_title, company_name)
+
+                if not source_name and " - " in clean_title:
+                    parts = clean_title.rsplit(" - ", 1)
+                    cand = parts[1].strip()
+                    clean_title = parts[0].strip()
+                    if cand:
+                        source_name = cand
+
+                parsed_url = urllib.parse.urlparse(real_link)
+                domain = parsed_url.netloc.lower().replace("www.", "")
+
+                for domain_key, media_label in MEDIA_NAME_MAP.items():
+                    if domain_key in domain:
+                        source_name = media_label
+                        break
+
+                if not source_name or source_name.lower() in ["bing", "google"]:
+                    source_name = domain
+
+                priority = MEDIA_PRIORITY.get(source_name, 10)
+
+                results.append({
+                    "date": item_date,
+                    "type": "ニュース（一般サイト）",
+                    "title": clean_title,
+                    "summary": summary,
+                    "url": real_link,
+                    "pdf_url": None,
+                    "source": source_name,
+                    "is_pdf": False,
+                    "priority": priority,
+                })
+        except Exception:
+            pass
+
+        if results:
+            break
+
+    # 同一見出し重複排除（メジャー媒体優先）
     deduped_dict = {}
     for item in results:
         norm_key = re.sub(r'[\s\u3000・―\-―：:【】「」『』\(\)]+', '', item['title']).lower()
@@ -1000,7 +1044,7 @@ def fetch_general_news(query, company_dict, max_days_back=21):
 # 7. 社別キャッシュエンジン
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_direct_media_url_clean_v101"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_restored_perfect_direct_news_v200"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
