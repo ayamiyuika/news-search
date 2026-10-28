@@ -7,6 +7,7 @@ import http.cookiejar
 import re
 import ssl
 import time
+import unicodedata
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -30,17 +31,13 @@ st.caption("JR・大手私鉄・近鉄グループ各社の公式発表・最新
 # ==========================================
 # 0. メディア優先度＆除外ブラックリスト
 # ==========================================
-MEDIA_NAME_MAP = {
-    "asahi.com": "朝日新聞デジタル", "nikkei.com": "日本経済新聞", "yomiuri.co.jp": "読売新聞オンライン",
-    "mainichi.jp": "毎日新聞", "sankei.com": "産経ニュース", "yahoo.co.jp": "Yahoo!ニュース",
-    "trafficnews.jp": "乗りものニュース", "tetsudo.com": "鉄道コム", "railf.jp": "鉄道ファン (railf.jp)",
-    "news.mynavi.jp": "マイナビニュース", "itmedia.co.jp": "ITmedia", "toyokeizai.net": "東洋経済オンライン",
-    "diamond.jp": "ダイヤモンド・オンライン", "kyodo.co.jp": "共同通信", "nordot.app": "ノードット (共同通信系)",
-    "jiji.com": "時事通信", "nhk.or.jp": "NHK NEWS", "kobe-np.co.jp": "神戸新聞NEXT", "kyoto-np.co.jp": "京都新聞",
-    "chunichi.co.jp": "中日新聞", "tokyo-np.co.jp": "東京新聞", "hokkaido-np.co.jp": "北海道新聞",
-    "nishinippon.co.jp": "西日本新聞", "reuters.com": "ロイター", "bloomberg.co.jp": "ブルームバーグ",
-    "fnn.jp": "FNNプライムオンライン", "tv-asahi.co.jp": "テレ朝news", "tbs.co.jp": "TBS NEWS DIG",
-    "ntv.co.jp": "日テレNEWS",
+MEDIA_PRIORITY = {
+    "NHK NEWS": 100, "日本経済新聞": 95, "読売新聞オンライン": 90, "朝日新聞デジタル": 90,
+    "共同通信": 85, "毎日新聞": 85, "産経ニュース": 85, "時事通信": 80, "Yahoo!ニュース": 75,
+    "乗りものニュース": 72, "鉄道コム": 70, "鉄道ファン (railf.jp)": 70, "マイナビニュース": 65,
+    "東洋経済オンライン": 65, "ITmedia": 60, "ダイヤモンド・オンライン": 60,
+    "FNNプライムオンライン": 55, "テレ朝news": 55, "TBS NEWS DIG": 55, "日テレNEWS": 55,
+    "神戸新聞NEXT": 50, "京都新聞": 50, "中日新聞": 50, "東京新聞": 50, "北海道新聞": 50, "西日本新聞": 50
 }
 
 NAV_EXCLUDE_WORDS = {
@@ -91,7 +88,7 @@ elif "reset" in st.query_params:
     st.query_params.clear()
 
 # ==========================================
-# 1. 会社マスタープール（西鉄・近鉄・KNT-CT等のリリースURL最優先設定）
+# 1. 会社マスタープール（リリースURL最優先・西鉄安定復帰）
 # ==========================================
 COMPANY_POOL = {
     # --- JR各社 ---
@@ -99,18 +96,17 @@ COMPANY_POOL = {
         "id": "jr-hokkaido", "name": "JR北海道", "top_url": "https://www.jrhokkaido.co.jp/",
         "official_domains": ["jrhokkaido.co.jp"],
         "urls": ["https://www.jrhokkaido.co.jp/CM/info/press/presstop.html", "https://www.jrhokkaido.co.jp/"],
-        "query": "JR北海道 OR 北海道旅客鉄道",
+        "query": "JR北海道",
     },
-    # ★ JR東日本（専用ハイブリッド：直接巡回 ＋ 公式中継ミラー）
     "jr-east": {
         "id": "jr-east", "name": "JR東日本", "is_jr_east": True, "top_url": "https://www.jreast.co.jp/",
-        "official_domains": ["jreast.co.jp", "tetsudo.com"],
+        "official_domains": ["jreast.co.jp"],
         "urls": [
             "https://www.jreast.co.jp/press/",
             "https://www.jreast.co.jp/rss/press.xml",
             "https://www.tetsudo.com/railway/0002/release/",
         ],
-        "query": "JR東日本 OR 東日本旅客鉄道",
+        "query": "JR東日本",
     },
     "jr-central": {
         "id": "jr-central", "name": "JR東海", "top_url": "https://jr-central.co.jp/",
@@ -122,19 +118,19 @@ COMPANY_POOL = {
         "id": "jr-west", "name": "JR西日本", "top_url": "https://www.westjr.co.jp/",
         "official_domains": ["westjr.co.jp"],
         "urls": ["https://www.westjr.co.jp/press/article/", "https://www.westjr.co.jp/press/", "https://www.westjr.co.jp/"],
-        "query": "JR西日本 OR 西日本旅客鉄道",
+        "query": "JR西日本",
     },
     "jr-shikoku": {
         "id": "jr-shikoku", "name": "JR四国", "top_url": "https://www.jr-shikoku.co.jp/",
         "official_domains": ["jr-shikoku.co.jp"],
         "urls": ["https://www.jr-shikoku.co.jp/03_news/press/", "https://www.jr-shikoku.co.jp/"],
-        "query": "JR四国 OR 四国旅客鉄道",
+        "query": "JR四国",
     },
     "jr-kyushu": {
         "id": "jr-kyushu", "name": "JR九州", "top_url": "https://www.jrkyushu.co.jp/",
         "official_domains": ["jrkyushu.co.jp"],
         "urls": ["https://www.jrkyushu.co.jp/news/release/index.html", "https://www.jrkyushu.co.jp/news/"],
-        "query": "JR九州 OR 九州旅客鉄道",
+        "query": "JR九州",
     },
     # --- 私鉄各社 ---
     "tobu": {
@@ -167,7 +163,6 @@ COMPANY_POOL = {
         "urls": ["https://www.odakyu.jp/company/about/news/", "https://www.odakyu.jp/news/", "https://www.odakyu.jp/"],
         "query": "小田急電鉄",
     },
-    # ★ 「東急電鉄（東急を含む）」
     "tokyu": {
         "id": "tokyu", "name": "東急電鉄（東急を含む）", "top_url": "https://www.tokyu.co.jp/",
         "official_domains": ["tokyu.co.jp"],
@@ -180,11 +175,10 @@ COMPANY_POOL = {
         "urls": ["https://www.keikyu.co.jp/company/news/", "https://www.keikyu.co.jp/report/", "https://www.keikyu.co.jp/"],
         "query": "京浜急行電鉄 OR 京急",
     },
-    # ★ 相模鉄道
     "sotetsu": {
         "id": "sotetsu", "name": "相模鉄道（相鉄HD含む）", "top_url": "https://www.sotetsu.co.jp/",
         "official_domains": ["sotetsu.co.jp"],
-        "urls": ["https://www.sotetsu.co.jp/", "https://www.sotetsu.co.jp/pressrelease/", "https://www.sotetsu.co.jp/news/"],
+        "urls": ["https://www.sotetsu.co.jp/pressrelease/", "https://www.sotetsu.co.jp/news/", "https://www.sotetsu.co.jp/"],
         "query": "相模鉄道 OR 相鉄ホールディングス",
     },
     "meitetsu": {
@@ -829,10 +823,42 @@ def fetch_official_releases(company_info, max_days_back=21):
 
 
 # ==========================================
-# 6. 一般ニュース判定＆取得エンジン（完全復元版）
+# 6. 一般ニュース判定＆取得エンジン（全角ＪＲ正規化・以前の安定コード復元）
 # ==========================================
+def extract_company_keywords(company_name):
+    """会社名から検索マッチ用のキーワード群を生成（全角・半角正規化対応）"""
+    clean_comp = re.sub(r'[\（\(].*?[\）\)]', '', company_name).strip()
+    comp_keywords = [clean_comp]
+    if "・" in clean_comp:
+        comp_keywords.extend(clean_comp.split("・"))
+
+    # ★ 近鉄・近鉄GHDへの手厚いキーワード対応
+    if "近鉄" in company_name or "近畿日本鉄道" in company_name:
+        comp_keywords.extend(["近鉄", "近鉄グループ", "近鉄グループホールディングス", "近鉄ghd", "近鉄ホールディングス", "近畿日本鉄道", "近鉄電車", "近鉄特急", "近鉄線"])
+
+    # ★ 阪急・阪急阪神への手厚いキーワード対応
+    if "阪急" in company_name:
+        comp_keywords.extend(["阪急", "阪急電車", "阪急電鉄", "阪急阪神", "阪急線"])
+
+    # ★ 東急電鉄への対応
+    if "東急" in company_name:
+        comp_keywords.extend(["東急", "東急電鉄", "東急線"])
+
+    # ★ JR各社への対応
+    if company_name.startswith("JR") or company_name.startswith("ＪＲ"):
+        comp_keywords.extend([company_name, company_name.replace("JR", "ＪＲ")])
+
+    for suffix in ["鉄道", "電鉄", "電気鉄道", "旅客鉄道"]:
+        if clean_comp.endswith(suffix):
+            short = clean_comp[:-len(suffix)]
+            if len(short) >= 2:
+                comp_keywords.append(short)
+
+    return list(set(comp_keywords))
+
+
 def fetch_general_news(query, company_name, max_days_back=21):
-    """一般ニュース取得（以前確実に動いていたユーザー様のオリジナルコードに完全復帰）"""
+    """一般ニュース取得（以前確実に動いていたコードに完全復帰＋Unicode正規化）"""
     results = []
     encoded_q = urllib.parse.quote(query)
     today = datetime.date.today()
@@ -875,8 +901,7 @@ def fetch_general_news(query, company_name, max_days_back=21):
                 u_match = re.search(r'[?&]u=a1([a-zA-Z0-9_\-]+)', link)
                 if u_match:
                     try:
-                        b64_str = u_match.group(1)
-                        b64_str += '=' * (-len(b64_str) % 4)
+                        b64_str = u_match.group(1) + '=' * (-len(u_match.group(1)) % 4)
                         decoded_bytes = base64.urlsafe_b64decode(b64_str)
                         real_url = decoded_bytes.decode('utf-8', errors='ignore')
                         if real_url.startswith("http"):
@@ -911,33 +936,18 @@ def fetch_general_news(query, company_name, max_days_back=21):
             if any(ng in combined_text for ng in noise_keywords):
                 continue
 
-            # 各社の通称判定（近鉄GHD・近鉄・阪急等のキーワード判定を緩和）
+            # ★ 全角・半角をNFKC正規化（新聞社の「ＪＲ」と半角「JR」を完全統一）
+            norm_combined = unicodedata.normalize('NFKC', combined_text).lower()
+
             strict_companies = ["奈良交通", "近鉄バス", "三重交通", "志摩スペイン村", "あべのハルカス美術館"]
             if company_name in strict_companies:
-                if company_name not in clean_title:
+                norm_comp = unicodedata.normalize('NFKC', company_name).lower()
+                if norm_comp not in norm_combined:
                     continue
             else:
-                clean_comp = re.sub(r'[\（\(].*?[\）\)]', '', company_name).strip()
-                comp_keywords = [clean_comp]
-                if "・" in clean_comp:
-                    comp_keywords.extend(clean_comp.split("・"))
-                # 近鉄・近鉄GHDへの手厚いキーワード対応
-                if "近鉄" in company_name or "近畿日本鉄道" in company_name:
-                    comp_keywords.extend(["近鉄", "近鉄グループ", "近鉄グループホールディングス", "近鉄ghd", "近畿日本鉄道", "近鉄電車", "近鉄特急", "近鉄線"])
-                # 阪急・阪急阪神への対応
-                if "阪急" in company_name:
-                    comp_keywords.extend(["阪急", "阪急電車", "阪急電鉄", "阪急阪神", "阪急線"])
-                # 東急電鉄への対応
-                if "東急" in company_name:
-                    comp_keywords.extend(["東急", "東急電鉄", "東急線"])
-                # 西武・相鉄・京阪等の略称対応
-                for suffix in ["鉄道", "電鉄", "電気鉄道", "旅客鉄道"]:
-                    if clean_comp.endswith(suffix):
-                        short = clean_comp[:-len(suffix)]
-                        if len(short) >= 2:
-                            comp_keywords.append(short)
-
-                if not any(kw.lower() in combined_text for kw in comp_keywords):
+                comp_keywords = extract_company_keywords(company_name)
+                # 全角・半角のどちらでもマッチするよう正規化して判定
+                if not any(unicodedata.normalize('NFKC', kw).lower() in norm_combined for kw in comp_keywords):
                     continue
 
             summary = clean_news_summary(clean_desc, clean_title, company_name)
@@ -970,6 +980,8 @@ def fetch_general_news(query, company_name, max_days_back=21):
             if not source_name or source_name.lower() in ["bing", "bing.com"]:
                 source_name = domain if "bing" not in domain else "ニュース報道"
 
+            priority = MEDIA_PRIORITY.get(source_name, 10)
+
             results.append({
                 "date": item_date,
                 "type": "ニュース（一般サイト）",
@@ -979,6 +991,7 @@ def fetch_general_news(query, company_name, max_days_back=21):
                 "pdf_url": None,
                 "source": source_name,
                 "is_pdf": False,
+                "priority": priority,
             })
     except Exception:
         pass
@@ -990,7 +1003,7 @@ def fetch_general_news(query, company_name, max_days_back=21):
 # 7. 社別キャッシュエンジン
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_restore_original_news_and_unlimited_official_v25"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_restore_exact_original_news_and_nfkc_v26"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
