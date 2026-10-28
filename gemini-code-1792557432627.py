@@ -30,13 +30,17 @@ st.caption("JR・大手私鉄・近鉄グループ各社の公式発表・最新
 # ==========================================
 # 0. メディア優先度＆除外ブラックリスト
 # ==========================================
-MEDIA_PRIORITY = {
-    "NHK NEWS": 100, "日本経済新聞": 95, "読売新聞オンライン": 90, "朝日新聞デジタル": 90,
-    "共同通信": 85, "毎日新聞": 85, "産経ニュース": 85, "時事通信": 80, "Yahoo!ニュース": 75,
-    "乗りものニュース": 72, "鉄道コム": 70, "鉄道ファン (railf.jp)": 70, "マイナビニュース": 65,
-    "東洋経済オンライン": 65, "ITmedia": 60, "ダイヤモンド・オンライン": 60,
-    "FNNプライムオンライン": 55, "テレ朝news": 55, "TBS NEWS DIG": 55, "日テレNEWS": 55,
-    "神戸新聞NEXT": 50, "京都新聞": 50, "中日新聞": 50, "東京新聞": 50, "北海道新聞": 50, "西日本新聞": 50
+MEDIA_NAME_MAP = {
+    "asahi.com": "朝日新聞デジタル", "nikkei.com": "日本経済新聞", "yomiuri.co.jp": "読売新聞オンライン",
+    "mainichi.jp": "毎日新聞", "sankei.com": "産経ニュース", "yahoo.co.jp": "Yahoo!ニュース",
+    "trafficnews.jp": "乗りものニュース", "tetsudo.com": "鉄道コム", "railf.jp": "鉄道ファン (railf.jp)",
+    "news.mynavi.jp": "マイナビニュース", "itmedia.co.jp": "ITmedia", "toyokeizai.net": "東洋経済オンライン",
+    "diamond.jp": "ダイヤモンド・オンライン", "kyodo.co.jp": "共同通信", "nordot.app": "ノードット (共同通信系)",
+    "jiji.com": "時事通信", "nhk.or.jp": "NHK NEWS", "kobe-np.co.jp": "神戸新聞NEXT", "kyoto-np.co.jp": "京都新聞",
+    "chunichi.co.jp": "中日新聞", "tokyo-np.co.jp": "東京新聞", "hokkaido-np.co.jp": "北海道新聞",
+    "nishinippon.co.jp": "西日本新聞", "reuters.com": "ロイター", "bloomberg.co.jp": "ブルームバーグ",
+    "fnn.jp": "FNNプライムオンライン", "tv-asahi.co.jp": "テレ朝news", "tbs.co.jp": "TBS NEWS DIG",
+    "ntv.co.jp": "日テレNEWS",
 }
 
 NAV_EXCLUDE_WORDS = {
@@ -207,7 +211,7 @@ COMPANY_POOL = {
         "urls": ["https://www.hanshin.co.jp/press/", "https://www.hankyu-hanshin.co.jp/release/", "https://www.hanshin.co.jp/"],
         "query": "阪神電気鉄道 OR 阪神電車",
     },
-    # ★ 阪急電鉄（ニュースリリースページ最優先）
+    # ★ 阪急電鉄（ニュースリリースページ最優先・文字数制限撤廃）
     "hankyu": {
         "id": "hankyu", "name": "阪急電鉄", "top_url": "https://www.hankyu.co.jp/",
         "official_domains": ["hankyu.co.jp", "hankyu-hanshin.co.jp"],
@@ -218,7 +222,7 @@ COMPANY_POOL = {
         ],
         "query": "阪急電鉄 OR 阪急電車",
     },
-    # ★ 阪急阪神HD（ニュースリリースページ最優先）
+    # ★ 阪急阪神HD（ニュースリリースページ最優先・文字数制限撤廃）
     "hankyu-hanshin-hd": {
         "id": "hankyu-hanshin-hd", "name": "阪急阪神ホールディングス", "top_url": "https://www.hankyu-hanshin.co.jp/",
         "official_domains": ["hankyu-hanshin.co.jp"],
@@ -228,7 +232,7 @@ COMPANY_POOL = {
         ],
         "query": "阪急阪神ホールディングス OR \"阪急阪神HD\"",
     },
-    # ★ 西日本鉄道（西鉄：ニュースリリースページ最優先）
+    # ★ 西日本鉄道（西鉄：ニュースリリースページ最優先・安定復帰）
     "nishitetsu": {
         "id": "nishitetsu", "name": "西日本鉄道", "top_url": "https://www.nishitetsu.co.jp/",
         "official_domains": ["nishitetsu.co.jp"],
@@ -240,7 +244,7 @@ COMPANY_POOL = {
         "query": "西日本鉄道 OR 西鉄",
     },
     # --- 近鉄グループ（17社・海遊館なし） ---
-    # ★ 近鉄GHD（ニュースリリースページ最優先）
+    # ★ 近鉄GHD（ニュースリリースページ最優先・文字数制限撤廃）
     "kintetsu-ghd": {
         "id": "kintetsu-ghd", "name": "近鉄GHD", "top_url": "https://www.kintetsu-g-hd.co.jp/",
         "official_domains": ["kintetsu-g-hd.co.jp"],
@@ -249,9 +253,9 @@ COMPANY_POOL = {
             "https://www.kintetsu-g-hd.co.jp/news-kg/",
             "https://www.kintetsu-g-hd.co.jp/",
         ],
-        "query": "近鉄グループホールディングス OR 近鉄GHD OR 近鉄グループ",
+        "query": "近鉄グループホールディングス OR 近鉄GHD",
     },
-    # ★ 近畿日本鉄道（ニュースリリースページ最優先）
+    # ★ 近畿日本鉄道（ニュースリリースページ最優先・文字数制限撤廃）
     "kintetsu-railway": {
         "id": "kintetsu-railway", "name": "近畿日本鉄道", "top_url": "https://www.kintetsu.co.jp/",
         "official_domains": ["kintetsu.co.jp"],
@@ -261,7 +265,7 @@ COMPANY_POOL = {
             "https://www.kintetsu.co.jp/all_news/",
             "https://www.kintetsu.co.jp/",
         ],
-        "query": "近畿日本鉄道 OR 近鉄電車 OR 近鉄特急",
+        "query": "近畿日本鉄道 OR 近鉄電車",
     },
     "kintetsu-fudosan": {
         "id": "kintetsu-fudosan", "name": "近鉄不動産", "top_url": "https://www.kintetsu-re.co.jp/",
@@ -284,13 +288,13 @@ COMPANY_POOL = {
     "kintetsu-dept": {
         "id": "kintetsu-dept", "name": "近鉄百貨店", "top_url": "https://www.d-kintetsu.co.jp/",
         "official_domains": ["d-kintetsu.co.jp"],
-        "urls": ["https://www.d-kintetsu.co.jp/", "https://www.d-kintetsu.co.jp/corporate/ir/whatsnew.html", "https://www.d-kintetsu.co.jp/corporate/"],
+        "urls": ["https://www.d-kintetsu.co.jp/corporate/ir/whatsnew.html", "https://www.d-kintetsu.co.jp/corporate/", "https://www.d-kintetsu.co.jp/"],
         "query": '"近鉄百貨店"',
     },
     "kintetsu-retailing": {
         "id": "kintetsu-retailing", "name": "近鉄リテーリング", "top_url": "https://knt-rt.co.jp/",
         "official_domains": ["knt-rt.co.jp"],
-        "urls": ["https://knt-rt.co.jp/", "https://knt-rt.co.jp/news/"],
+        "urls": ["https://knt-rt.co.jp/news/", "https://knt-rt.co.jp/"],
         "query": '"近鉄リテーリング"',
     },
     "kinsho-store": {
@@ -302,10 +306,10 @@ COMPANY_POOL = {
     "miyako-hotels": {
         "id": "miyako-hotels", "name": "近鉄・都ホテルズ", "top_url": "https://www.miyakohotels.ne.jp/",
         "official_domains": ["miyakohotels.ne.jp"],
-        "urls": ["https://www.miyakohotels.ne.jp/", "https://www.miyakohotels.ne.jp/newsrelease/"],
+        "urls": ["https://www.miyakohotels.ne.jp/newsrelease/", "https://www.miyakohotels.ne.jp/information/", "https://www.miyakohotels.ne.jp/"],
         "query": '"近鉄・都ホテルズ" OR "都ホテルズ＆リゾーツ" OR "都ホテル"',
     },
-    # ★ KNT-CT（ニュースリリースページ最優先）
+    # ★ KNT-CT（ニュースリリースページ最優先・安定復帰）
     "knt-ct": {
         "id": "knt-ct", "name": "KNT-CTホールディングス", "top_url": "https://www.kntcthd.co.jp/",
         "official_domains": ["kntcthd.co.jp"],
@@ -322,7 +326,6 @@ COMPANY_POOL = {
         "urls": ["https://corp.knt.co.jp/ja/release/", "https://corp.knt.co.jp/", "https://www.knt.co.jp/"],
         "query": '"近畿日本ツーリスト"',
     },
-    # ★ クラブツーリズム（旅行サイト公式ニュースリリース）
     "club-tourism": {
         "id": "club-tourism", "name": "クラブツーリズム", "top_url": "https://www.club-t.com/",
         "official_domains": ["club-t.com", "club-tourism.co.jp"],
@@ -420,7 +423,7 @@ def decode_html_bytes(raw_bytes, url=""):
     return best_decoded if best_decoded else raw_bytes.decode("utf-8", errors="replace")
 
 
-def parse_date_text(raw_text, current_year):
+def parse_date_text(raw_text, current_year, prefer_first=False):
     if not raw_text:
         return None
 
@@ -435,26 +438,29 @@ def parse_date_text(raw_text, current_year):
     text = re.sub(r"<[^>]+>", " ", raw_text)
     text = text.translate(zen_to_han)
 
-    m_reiwa = re.search(r"令和\s*([0-9]+|元)\s*年\s*([0-9]{1,2})\s*月\s*([0-9]{1,2})\s*日", text)
+    m_reiwa = list(re.finditer(r"令和\s*([0-9]+|元)\s*年\s*([0-9]{1,2})\s*月\s*([0-9]{1,2})\s*日", text))
     if m_reiwa:
-        y_val = 1 if m_reiwa.group(1) == "元" else int(m_reiwa.group(1))
+        match_item = m_reiwa[0] if prefer_first else m_reiwa[-1]
+        y_val = 1 if match_item.group(1) == "元" else int(match_item.group(1))
         try:
-            return datetime.date(2018 + y_val, int(m_reiwa.group(2)), int(m_reiwa.group(3)))
+            return datetime.date(2018 + y_val, int(match_item.group(2)), int(match_item.group(3)))
         except ValueError:
             pass
 
-    m_seireki = re.search(r"((?:19|20)\d{2})\s*[年\./\-]\s*([0-9]{1,2})\s*[月\./\-]\s*([0-9]{1,2})\s*日?", text)
+    m_seireki = list(re.finditer(r"((?:19|20)\d{2})\s*[年\./\-]\s*([0-9]{1,2})\s*[月\./\-]\s*([0-9]{1,2})\s*日?", text))
     if m_seireki:
+        match_item = m_seireki[0] if prefer_first else m_seireki[-1]
         try:
-            return datetime.date(int(m_seireki.group(1)), int(m_seireki.group(2)), int(m_seireki.group(3)))
+            return datetime.date(int(match_item.group(1)), int(match_item.group(2)), int(match_item.group(3)))
         except ValueError:
             pass
 
     if not re.search(r"(?:19|20)\d{2}", text):
-        m_md = re.search(r"(?<!\d)(1[0-2]|0?[1-9])\s*[月\./\-]\s*(3[01]|[12][0-9]|0?[1-9])\s*日?(?!\d)", text)
+        m_md = list(re.finditer(r"(?<!\d)(1[0-2]|0?[1-9])\s*[月\./\-]\s*(3[01]|[12][0-9]|0?[1-9])\s*日?(?!\d)", text))
         if m_md:
+            match_item = m_md[0] if prefer_first else m_md[-1]
             try:
-                return datetime.date(current_year, int(m_md.group(1)), int(m_md.group(2)))
+                return datetime.date(current_year, int(match_item.group(1)), int(match_item.group(2)))
             except ValueError:
                 pass
 
@@ -467,7 +473,7 @@ def clean_title_advanced(raw_title, company_info):
     t = html.unescape(t)
     t = re.sub(r'\s+', ' ', t).strip()
 
-    # 1. 末尾の [PDF: 1.6MB] や [PDF 1.6MB] [1.2MB] [PDF:〇〇] などを除去
+    # 1. 末尾の [PDF: 1.6MB] や [PDF 1.6MB] [1.2MB] などを除去
     t = re.sub(r'[\[［【\(（]\s*(?:PDF\s*[:：]?\s*)?[0-9\.]+\s*(?:[KMG]B|キロバイト|メガバイト)\s*[\]］】\)）]\s*$', '', t, flags=re.I)
     t = re.sub(r'[\[［【\(（]\s*PDF\s*[\]］】\)）]\s*$', '', t, flags=re.I)
     t = re.sub(r'\.pdf\s*$', '', t, flags=re.I)
@@ -518,8 +524,30 @@ def clean_title_advanced(raw_title, company_info):
     return t
 
 
+def clean_news_summary(summary, title, company_name):
+    clean = re.sub(r"<[^>]+>", " ", summary)
+    clean = html.unescape(clean)
+    clean = re.sub(r"\s+", " ", clean).strip()
+
+    noise_terms = [
+        "招待券", "プレゼント", "懸賞", "合唱団", "定期演奏会",
+        "【新機能】", "writevideo", "プレスリリース *",
+        "tel：", "年中無休", "お問合せ 一般のお客様", "お問い合わせ先", "チケット"
+    ]
+    if any(ng in clean.lower() for ng in noise_terms):
+        return f"{company_name}に関する最新の報道・ニュースです。詳細は掲載ページをご確認ください。"
+
+    clean = re.sub(r'[\d\s\.\»\«\>]+最新のニュース.*', '', clean)
+    clean = clean.strip()
+
+    if len(clean) < 15 or clean == title:
+        return f"{company_name}に関する最新の報道・ニュースです。詳細は掲載ページをご確認ください。"
+
+    return clean[:140] + ("..." if len(clean) > 140 else "")
+
+
 # ==========================================
-# 3. HTTP通信ユーティリティ（最新WAF完全回避セッション）
+# 3. HTTP通信ユーティリティ
 # ==========================================
 @st.cache_resource
 def get_advanced_http_opener():
@@ -664,23 +692,12 @@ def parse_official_releases_universal(html_text, base_url, company_info, cutoff_
         # B. リンク手前：文字数制限を撤廃（近鉄・阪急等に対応）
         if not d_val:
             before_text = clean_html[max(0, start_pos - before_limit) : start_pos]
-            m_dates = list(re.finditer(r'((?:19|20)\d{2}\s*[年\./\-]\s*[0-9]{1,2}\s*[月\./\-]\s*[0-9]{1,2}|令和\s*(?:\d+|元)年\s*[0-9]{1,2}月\s*[0-9]{1,2}日)', before_text))
-            if m_dates:
-                last_m = m_dates[-1]
-                between = before_text[last_m.end():]
-                # 前の記事のタイトルリンクを飛び越えないように確認
-                if '</a>' not in between:
-                    d_val = parse_date_text(last_m.group(0), current_year)
+            d_val = parse_date_text(before_text, current_year, prefer_first=False)
 
         # C. リンク直後（テーブル構造など：最大400文字）
         if not d_val:
             after_text = clean_html[end_pos : min(len(clean_html), end_pos + 400)]
-            m_dates = list(re.finditer(r'((?:19|20)\d{2}\s*[年\./\-]\s*[0-9]{1,2}\s*[月\./\-]\s*[0-9]{1,2}|令和\s*(?:\d+|元)年\s*[0-9]{1,2}月\s*[0-9]{1,2}日)', after_text))
-            if m_dates:
-                first_m = m_dates[0]
-                between = after_text[:first_m.start()]
-                if '<a ' not in between:
-                    d_val = parse_date_text(first_m.group(0), current_year)
+            d_val = parse_date_text(after_text, current_year, prefer_first=True)
 
         if not d_val or not (cutoff_date <= d_val <= today):
             continue
@@ -812,28 +829,10 @@ def fetch_official_releases(company_info, max_days_back=21):
 
 
 # ==========================================
-# 6. 一般ニュース判定＆取得エンジン（完全安定復元版）
+# 6. 一般ニュース判定＆取得エンジン（完全復元版）
 # ==========================================
-def extract_company_keywords(company_name):
-    """会社名から検索マッチ用のキーワード群を正確に生成（カッコ処理バグ解消・近鉄GHD等緩和）"""
-    clean_comp = re.sub(r'[\（\(].*?[\）\)]', '', company_name).strip()
-    comp_keywords = [clean_comp]
-    if "・" in clean_comp:
-        comp_keywords.extend(clean_comp.split("・"))
-    if "近鉄" in company_name or "近畿日本鉄道" in company_name:
-        comp_keywords.extend(["近鉄", "近畿日本鉄道", "近鉄電車", "近鉄特急", "近鉄GHD", "近鉄グループ", "近鉄グループホールディングス"])
-    if "阪急" in company_name:
-        comp_keywords.extend(["阪急", "阪急電車", "阪急電鉄", "阪急阪神", "阪急線"])
-    for suffix in ["鉄道", "電鉄", "電気鉄道", "旅客鉄道"]:
-        if clean_comp.endswith(suffix):
-            short = clean_comp[:-len(suffix)]
-            if len(short) >= 2:
-                comp_keywords.append(short)
-    return list(set(comp_keywords))
-
-
 def fetch_general_news(query, company_name, max_days_back=21):
-    """一般ニュース取得（以前の安定動作コードに完全復帰）"""
+    """一般ニュース取得（以前確実に動いていたユーザー様のオリジナルコードに完全復帰）"""
     results = []
     encoded_q = urllib.parse.quote(query)
     today = datetime.date.today()
@@ -876,7 +875,8 @@ def fetch_general_news(query, company_name, max_days_back=21):
                 u_match = re.search(r'[?&]u=a1([a-zA-Z0-9_\-]+)', link)
                 if u_match:
                     try:
-                        b64_str = u_match.group(1) + '=' * (-len(u_match.group(1)) % 4)
+                        b64_str = u_match.group(1)
+                        b64_str += '=' * (-len(b64_str) % 4)
                         decoded_bytes = base64.urlsafe_b64decode(b64_str)
                         real_url = decoded_bytes.decode('utf-8', errors='ignore')
                         if real_url.startswith("http"):
@@ -911,13 +911,32 @@ def fetch_general_news(query, company_name, max_days_back=21):
             if any(ng in combined_text for ng in noise_keywords):
                 continue
 
-            # 各社の通称判定
+            # 各社の通称判定（近鉄GHD・近鉄・阪急等のキーワード判定を緩和）
             strict_companies = ["奈良交通", "近鉄バス", "三重交通", "志摩スペイン村", "あべのハルカス美術館"]
             if company_name in strict_companies:
                 if company_name not in clean_title:
                     continue
             else:
-                comp_keywords = extract_company_keywords(company_name)
+                clean_comp = re.sub(r'[\（\(].*?[\）\)]', '', company_name).strip()
+                comp_keywords = [clean_comp]
+                if "・" in clean_comp:
+                    comp_keywords.extend(clean_comp.split("・"))
+                # 近鉄・近鉄GHDへの手厚いキーワード対応
+                if "近鉄" in company_name or "近畿日本鉄道" in company_name:
+                    comp_keywords.extend(["近鉄", "近鉄グループ", "近鉄グループホールディングス", "近鉄ghd", "近畿日本鉄道", "近鉄電車", "近鉄特急", "近鉄線"])
+                # 阪急・阪急阪神への対応
+                if "阪急" in company_name:
+                    comp_keywords.extend(["阪急", "阪急電車", "阪急電鉄", "阪急阪神", "阪急線"])
+                # 東急電鉄への対応
+                if "東急" in company_name:
+                    comp_keywords.extend(["東急", "東急電鉄", "東急線"])
+                # 西武・相鉄・京阪等の略称対応
+                for suffix in ["鉄道", "電鉄", "電気鉄道", "旅客鉄道"]:
+                    if clean_comp.endswith(suffix):
+                        short = clean_comp[:-len(suffix)]
+                        if len(short) >= 2:
+                            comp_keywords.append(short)
+
                 if not any(kw.lower() in combined_text for kw in comp_keywords):
                     continue
 
@@ -951,8 +970,6 @@ def fetch_general_news(query, company_name, max_days_back=21):
             if not source_name or source_name.lower() in ["bing", "bing.com"]:
                 source_name = domain if "bing" not in domain else "ニュース報道"
 
-            priority = MEDIA_PRIORITY.get(source_name, 10)
-
             results.append({
                 "date": item_date,
                 "type": "ニュース（一般サイト）",
@@ -962,29 +979,18 @@ def fetch_general_news(query, company_name, max_days_back=21):
                 "pdf_url": None,
                 "source": source_name,
                 "is_pdf": False,
-                "priority": priority,
             })
     except Exception:
         pass
 
-    # 同一見出し重複排除（メジャー媒体優先）
-    deduped_dict = {}
-    for item in results:
-        norm_key = re.sub(r'[\s\u3000・―\-―：:【】「」『』\(\)]+', '', item['title']).lower()
-        if norm_key in deduped_dict:
-            if item["priority"] > deduped_dict[norm_key]["priority"]:
-                deduped_dict[norm_key] = item
-        else:
-            deduped_dict[norm_key] = item
-
-    return list(deduped_dict.values())
+    return results
 
 
 # ==========================================
 # 7. 社別キャッシュエンジン
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_strict_direct_and_clean_v23"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_restore_original_news_and_unlimited_official_v25"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
@@ -1527,10 +1533,6 @@ for group_prefix, group_title, comp_list in render_groups:
 
         main_url = comp.get("top_url", comp["urls"][0])
         anchor_id = f"{group_prefix}-{comp['id']}"
-
-        is_manually_hidden = comp["id"] in st.session_state.hidden_companies
-        is_filtered_out = has_filter and (comp["id"] not in st.session_state.selected_filter_companies)
-        should_hide_articles = is_manually_hidden or is_filtered_out
 
         h_col1, h_col2 = st.columns([5, 1.3])
         with h_col1:
