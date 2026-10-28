@@ -91,7 +91,7 @@ elif "reset" in st.query_params:
     st.query_params.clear()
 
 # ==========================================
-# 1. 会社マスタープール（以前の安定クエリ完全準拠）
+# 1. 会社マスタープール（ニュース検索クエリ完全復元＆強化）
 # ==========================================
 COMPANY_POOL = {
     # --- JR各社 ---
@@ -99,7 +99,7 @@ COMPANY_POOL = {
         "id": "jr-hokkaido", "name": "JR北海道", "top_url": "https://www.jrhokkaido.co.jp/",
         "official_domains": ["jrhokkaido.co.jp"],
         "urls": ["https://www.jrhokkaido.co.jp/CM/info/press/presstop.html", "https://www.jrhokkaido.co.jp/"],
-        "query": "JR北海道",
+        "query": "JR北海道 OR ＪＲ北海道",
     },
     "jr-east": {
         "id": "jr-east", "name": "JR東日本", "is_jr_east": True, "top_url": "https://www.jreast.co.jp/",
@@ -109,104 +109,105 @@ COMPANY_POOL = {
             "https://www.jreast.co.jp/rss/press.xml",
             "https://www.tetsudo.com/railway/0002/release/",
         ],
-        "query": "JR東日本",
+        "query": "JR東日本 OR ＪＲ東日本",
     },
     "jr-central": {
         "id": "jr-central", "name": "JR東海", "top_url": "https://jr-central.co.jp/",
         "official_domains": ["jr-central.co.jp"],
         "urls": ["https://jr-central.co.jp/news/release/", "https://jr-central.co.jp/news/", "https://jr-central.co.jp/"],
-        "query": "JR東海 OR 東海旅客鉄道",
+        "query": "JR東海 OR ＪＲ東海 OR 東海旅客鉄道",
     },
     "jr-west": {
         "id": "jr-west", "name": "JR西日本", "top_url": "https://www.westjr.co.jp/",
         "official_domains": ["westjr.co.jp"],
         "urls": ["https://www.westjr.co.jp/press/article/", "https://www.westjr.co.jp/press/", "https://www.westjr.co.jp/"],
-        "query": "JR西日本",
+        "query": "JR西日本 OR ＪＲ西日本",
     },
     "jr-shikoku": {
         "id": "jr-shikoku", "name": "JR四国", "top_url": "https://www.jr-shikoku.co.jp/",
         "official_domains": ["jr-shikoku.co.jp"],
         "urls": ["https://www.jr-shikoku.co.jp/03_news/press/", "https://www.jr-shikoku.co.jp/"],
-        "query": "JR四国",
+        "query": "JR四国 OR ＪＲ四国",
     },
     "jr-kyushu": {
         "id": "jr-kyushu", "name": "JR九州", "top_url": "https://www.jrkyushu.co.jp/",
         "official_domains": ["jrkyushu.co.jp"],
         "urls": ["https://www.jrkyushu.co.jp/news/release/index.html", "https://www.jrkyushu.co.jp/news/"],
-        "query": "JR九州",
+        "query": "JR九州 OR ＪＲ九州",
     },
     # --- 私鉄各社 ---
     "tobu": {
         "id": "tobu", "name": "東武鉄道", "top_url": "https://www.tobu.co.jp/",
         "official_domains": ["tobu.co.jp"],
         "urls": ["https://www.tobu.co.jp/newsrelease/", "https://www.tobu.co.jp/"],
-        "query": "東武鉄道",
+        "query": "東武鉄道 OR 東武線 OR 東武",
     },
     "seibu": {
         "id": "seibu", "name": "西武鉄道（西武HD含む）", "top_url": "https://www.seiburailway.jp/",
         "official_domains": ["seiburailway.jp", "seibuholdings.co.jp"],
         "urls": ["https://www.seiburailway.jp/newsroom/news/", "https://www.seibuholdings.co.jp/news/", "https://www.seiburailway.jp/"],
-        "query": "西武鉄道 OR 西武ホールディングス",
+        "query": "西武鉄道 OR 西武ホールディングス OR 西武線 OR 西武",
     },
     "keisei": {
         "id": "keisei", "name": "京成電鉄", "top_url": "https://www.keisei.co.jp/",
         "official_domains": ["keisei.co.jp"],
-        "urls": ["https://www.keisei.co.jp/news/", "https://www.keisei.co.jp/"],
-        "query": "京成電鉄",
+        "urls": ["https://www.keisei.co.jp/", "https://www.keisei.co.jp/news/"],
+        "query": "京成電鉄 OR スカイライナー OR 京成",
     },
     "keio": {
         "id": "keio", "name": "京王電鉄", "top_url": "https://www.keio.co.jp/",
         "official_domains": ["keio.co.jp"],
         "urls": ["https://www.keio.co.jp/news/update/news_release/", "https://www.keio.co.jp/news/update/index.html", "https://www.keio.co.jp/"],
-        "query": "京王電鉄",
+        "query": "京王電鉄 OR 京王線 OR 京王",
     },
     "odakyu": {
         "id": "odakyu", "name": "小田急電鉄", "top_url": "https://www.odakyu.jp/",
         "official_domains": ["odakyu.jp"],
         "urls": ["https://www.odakyu.jp/company/about/news/", "https://www.odakyu.jp/news/", "https://www.odakyu.jp/"],
-        "query": "小田急電鉄",
+        "query": "小田急電鉄 OR ロマンスカー OR 小田急",
     },
+    # ★ 「東急電鉄（東急を含む）」
     "tokyu": {
         "id": "tokyu", "name": "東急電鉄（東急を含む）", "top_url": "https://www.tokyu.co.jp/",
         "official_domains": ["tokyu.co.jp"],
         "urls": ["https://www.tokyu.co.jp/company/news/", "https://www.tokyu.co.jp/information/", "https://www.tokyu.co.jp/"],
-        "query": "東急電鉄 OR 東急",
+        "query": "東急電鉄 OR 東急線 OR 東急",
     },
     "keikyu": {
         "id": "keikyu", "name": "京浜急行電鉄", "top_url": "https://www.keikyu.co.jp/",
         "official_domains": ["keikyu.co.jp"],
         "urls": ["https://www.keikyu.co.jp/company/news/", "https://www.keikyu.co.jp/report/", "https://www.keikyu.co.jp/"],
-        "query": "京浜急行電鉄 OR 京急",
+        "query": "京浜急行電鉄 OR 京急電鉄 OR 京急",
     },
     "sotetsu": {
         "id": "sotetsu", "name": "相模鉄道（相鉄HD含む）", "top_url": "https://www.sotetsu.co.jp/",
         "official_domains": ["sotetsu.co.jp"],
         "urls": ["https://www.sotetsu.co.jp/pressrelease/", "https://www.sotetsu.co.jp/news/", "https://www.sotetsu.co.jp/"],
-        "query": "相模鉄道 OR 相鉄ホールディングス",
+        "query": "相模鉄道 OR 相鉄ホールディングス OR 相鉄線 OR 相鉄",
     },
     "meitetsu": {
         "id": "meitetsu", "name": "名古屋鉄道", "top_url": "https://www.meitetsu.co.jp/",
         "official_domains": ["meitetsu.co.jp"],
         "urls": ["https://www.meitetsu.co.jp/profile/news/", "https://www.meitetsu.co.jp/"],
-        "query": "名古屋鉄道 OR 名鉄",
+        "query": "名古屋鉄道 OR 名鉄電車 OR 名鉄",
     },
     "nankai": {
         "id": "nankai", "name": "南海電気鉄道", "top_url": "https://www.nankai.co.jp/",
         "official_domains": ["nankai.co.jp"],
         "urls": ["https://www.nankai.co.jp/news.html", "https://www.nankai.co.jp/company/news/", "https://www.nankai.co.jp/"],
-        "query": "南海電気鉄道 OR 南海電鉄",
+        "query": "南海電気鉄道 OR 南海電鉄 OR 南海電車 OR 南海",
     },
     "keihan": {
         "id": "keihan", "name": "京阪電気鉄道（京阪HD含む）", "top_url": "https://www.keihan.co.jp/",
         "official_domains": ["keihan.co.jp", "keihan-holdings.co.jp"],
         "urls": ["https://www.keihan.co.jp/corporate/release/", "https://www.keihan-holdings.co.jp/news/", "https://www.keihan.co.jp/"],
-        "query": "京阪電気鉄道 OR 京阪ホールディングス",
+        "query": "京阪電気鉄道 OR 京阪ホールディングス OR 京阪電車 OR 京阪",
     },
     "hanshin": {
         "id": "hanshin", "name": "阪神電気鉄道", "top_url": "https://www.hanshin.co.jp/",
         "official_domains": ["hanshin.co.jp", "hankyu-hanshin.co.jp"],
-        "urls": ["https://www.hanshin.co.jp/press/", "https://www.hankyu-hanshin.co.jp/release/", "https://www.hanshin.co.jp/"],
-        "query": "阪神電気鉄道 OR 阪神電車",
+        "urls": ["https://www.hanshin.co.jp/press/", "https://www.hanshin.co.jp/release/", "https://www.hanshin.co.jp/"],
+        "query": "阪神電気鉄道 OR 阪神電車 OR 阪神電鉄",
     },
     # ★ 阪急電鉄（リリースページ優先）
     "hankyu": {
@@ -217,7 +218,7 @@ COMPANY_POOL = {
             "https://www.hankyu.co.jp/company/news/",
             "https://www.hankyu-hanshin.co.jp/release/",
         ],
-        "query": "阪急電鉄 OR 阪急電車",
+        "query": "阪急電鉄 OR 阪急電車 OR 阪急線 OR 阪急",
     },
     # ★ 阪急阪神HD（リリースページ優先）
     "hankyu-hanshin-hd": {
@@ -227,7 +228,7 @@ COMPANY_POOL = {
             "https://www.hankyu-hanshin.co.jp/release/",
             "https://www.hankyu-hanshin.co.jp/",
         ],
-        "query": "阪急阪神ホールディングス OR \"阪急阪神HD\"",
+        "query": "阪急阪神ホールディングス OR \"阪急阪神HD\" OR 阪急阪神",
     },
     # ★ 西日本鉄道（リリースページ優先・安定復帰）
     "nishitetsu": {
@@ -238,7 +239,7 @@ COMPANY_POOL = {
             "https://www.nishitetsu.co.jp/release/",
             "https://www.nishitetsu.co.jp/",
         ],
-        "query": "西日本鉄道 OR 西鉄",
+        "query": "西日本鉄道 OR 西鉄バス OR 西鉄電車 OR 西鉄",
     },
     # --- 近鉄グループ（17社・海遊館なし） ---
     # ★ 近鉄GHD（多様なクエリに対応）
@@ -262,7 +263,7 @@ COMPANY_POOL = {
             "https://www.kintetsu.co.jp/all_news/",
             "https://www.kintetsu.co.jp/",
         ],
-        "query": "近畿日本鉄道 OR 近鉄電車",
+        "query": "近畿日本鉄道 OR 近鉄電車 OR 近鉄特急 OR 近鉄",
     },
     "kintetsu-fudosan": {
         "id": "kintetsu-fudosan", "name": "近鉄不動産", "top_url": "https://www.kintetsu-re.co.jp/",
@@ -689,23 +690,12 @@ def parse_official_releases_universal(html_text, base_url, company_info, cutoff_
         # B. リンク手前：文字数制限を撤廃（近鉄・阪急等に対応）
         if not d_val:
             before_text = clean_html[max(0, start_pos - before_limit) : start_pos]
-            m_dates = list(re.finditer(r'((?:19|20)\d{2}\s*[年\./\-]\s*[0-9]{1,2}\s*[月\./\-]\s*[0-9]{1,2}|令和\s*(?:\d+|元)年\s*[0-9]{1,2}月\s*[0-9]{1,2}日)', before_text))
-            if m_dates:
-                last_m = m_dates[-1]
-                between = before_text[last_m.end():]
-                # 前の記事のタイトルリンクを飛び越えないように確認
-                if '</a>' not in between:
-                    d_val = parse_date_text(last_m.group(0), current_year)
+            d_val = parse_date_text(before_text, current_year, prefer_first=False)
 
         # C. リンク直後（テーブル構造など：最大400文字）
         if not d_val:
             after_text = clean_html[end_pos : min(len(clean_html), end_pos + 400)]
-            m_dates = list(re.finditer(r'((?:19|20)\d{2}\s*[年\./\-]\s*[0-9]{1,2}\s*[月\./\-]\s*[0-9]{1,2}|令和\s*(?:\d+|元)年\s*[0-9]{1,2}月\s*[0-9]{1,2}日)', after_text))
-            if m_dates:
-                first_m = m_dates[0]
-                between = after_text[:first_m.start()]
-                if '<a ' not in between:
-                    d_val = parse_date_text(first_m.group(0), current_year)
+            d_val = parse_date_text(after_text, current_year, prefer_first=True)
 
         if not d_val or not (cutoff_date <= d_val <= today):
             continue
@@ -837,16 +827,16 @@ def fetch_official_releases(company_info, max_days_back=21):
 
 
 # ==========================================
-# 6. 一般ニュース判定＆取得エンジン（以前確実に動作していた安定版完全復元）
+# 6. 一般ニュース取得エンジン（以前確実に動作していた安定版完全復元）
 # ==========================================
 def fetch_general_news(query, company_name, max_days_back=21):
     """
-    以前確実に動いていたユーザー様のオリジナルコードに完全復帰。
-    カッコつき会社名の処理と、近鉄GHD・阪急等のキーワード判定緩和のみ安全に適用。
+    以前確実に動いていたオリジナルの取得コードに完全復帰。
+    不具合の原因となっていた過剰な本文照合フィルターを撤廃し、
+    Bing News RSSの検索結果を素直に取得します。
     """
     results = []
     encoded_q = urllib.parse.quote(query)
-    rss_url = f"https://www.bing.com/news/search?q={encoded_q}&format=rss&mkt=ja-JP"
     today = datetime.date.today()
     cutoff_date = today - datetime.timedelta(days=max_days_back)
 
@@ -855,6 +845,8 @@ def fetch_general_news(query, company_name, max_days_back=21):
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Accept": "application/rss+xml, application/xml, text/xml, */*",
     }
+
+    rss_url = f"https://www.bing.com/news/search?q={encoded_q}&format=rss&mkt=ja-JP"
 
     try:
         req = urllib.request.Request(rss_url, headers=headers)
@@ -921,27 +913,10 @@ def fetch_general_news(query, company_name, max_days_back=21):
             if any(ng in combined_text for ng in noise_keywords):
                 continue
 
-            # 各社の通称判定
+            # 厳格指定会社のみタイトル社名チェック（ノイズ混入防止）
             strict_companies = ["奈良交通", "近鉄バス", "三重交通", "志摩スペイン村", "あべのハルカス美術館"]
             if company_name in strict_companies:
                 if company_name not in clean_title:
-                    continue
-            else:
-                clean_comp = re.sub(r'[\（\(].*?[\）\)]', '', company_name).strip()
-                comp_keywords = [clean_comp]
-                if "・" in clean_comp:
-                    comp_keywords.extend(clean_comp.split("・"))
-                # 近鉄・近鉄GHDへの多様なキーワード対応
-                if "近鉄" in company_name or "近畿日本鉄道" in company_name:
-                    comp_keywords.extend(["近鉄", "近鉄グループ", "近鉄グループホールディングス", "近鉄ghd", "近畿日本鉄道", "近鉄電車", "近鉄特急"])
-                # 阪急・阪急阪神への対応
-                if "阪急" in company_name:
-                    comp_keywords.extend(["阪急", "阪急電車", "阪急電鉄", "阪急阪神"])
-                # 東急電鉄への対応
-                if "東急" in company_name:
-                    comp_keywords.extend(["東急", "東急電鉄"])
-
-                if not any(kw.lower() in combined_text for kw in comp_keywords):
                     continue
 
             summary = clean_news_summary(clean_desc, clean_title, company_name)
@@ -991,10 +966,10 @@ def fetch_general_news(query, company_name, max_days_back=21):
 
 
 # ==========================================
-# 7. 社別キャッシュエンジン（キャッシュ完全リフレッシュ）
+# 7. 社別キャッシュエンジン（キャッシュ完全更新）
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_reverted_original_bing_cache_v35"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_reverted_stable_original_cache_v50"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
