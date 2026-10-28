@@ -272,7 +272,7 @@ COMPANY_POOL = {
     "abeno-art-museum": {
         "id": "abeno-art-museum", "name": "あべのハルカス美術館", "top_url": "https://www.aham.jp/",
         "official_domains": ["aham.jp"],
-        "urls": ["https://www.aham.jp/news/", "https://www.aham.jp/information/", "https://www.aham.jp/", ],
+        "urls": ["https://www.aham.jp/news/", "https://www.aham.jp/information/", "https://www.aham.jp/"],
         "query": '"あべのハルカス美術館"',
     },
     "kwe": {
@@ -363,7 +363,6 @@ COMPANY_POOL = {
 
 JR_ORDER = ["jr-hokkaido", "jr-east", "jr-central", "jr-west", "jr-shikoku", "jr-kyushu"]
 
-# 東京メトロ・大阪メトロ完全削除後の私鉄順
 PRIVATE_ORDER = [
     "tobu", "seibu", "keisei", "keio", "odakyu",
     "tokyu", "keikyu", "sotetsu", "meitetsu",
@@ -371,7 +370,6 @@ PRIVATE_ORDER = [
     "nankai", "keihan", "hanshin", "hankyu", "hankyu-hanshin-hd", "nishitetsu"
 ]
 
-# 近鉄グループ17社
 KINTETSU_ORDER = [
     "kintetsu-ghd", "kintetsu-railway", "kintetsu-fudosan", "abeno-art-museum",
     "kwe", "kintetsu-dept", "kintetsu-retailing", "kinsho-store", "miyako-hotels",
@@ -437,7 +435,6 @@ def parse_date_text(raw_text, current_year):
     text = re.sub(r"<[^>]+>", " ", raw_text)
     text = text.translate(zen_to_han)
 
-    # 1. 令和表記
     m_reiwa = re.search(r"令和\s*([0-9]+|元)\s*年\s*([0-9]{1,2})\s*月\s*([0-9]{1,2})\s*日", text)
     if m_reiwa:
         y_val = 1 if m_reiwa.group(1) == "元" else int(m_reiwa.group(1))
@@ -446,7 +443,6 @@ def parse_date_text(raw_text, current_year):
         except ValueError:
             pass
 
-    # 2. 西暦表記
     m_seireki = re.search(r"((?:19|20)\d{2})\s*[年\./\-]\s*([0-9]{1,2})\s*[月\./\-]\s*([0-9]{1,2})\s*日?", text)
     if m_seireki:
         try:
@@ -454,7 +450,6 @@ def parse_date_text(raw_text, current_year):
         except ValueError:
             pass
 
-    # 3. 月日のみ表記
     if not re.search(r"(?:19|20)\d{2}", text):
         m_md = re.search(r"(?<!\d)(1[0-2]|0?[1-9])\s*[月\./\-]\s*(3[01]|[12][0-9]|0?[1-9])\s*日?(?!\d)", text)
         if m_md:
@@ -523,28 +518,6 @@ def clean_title_advanced(raw_title, company_info):
     return t
 
 
-def clean_news_summary(summary, title, company_name):
-    clean = re.sub(r"<[^>]+>", " ", summary)
-    clean = html.unescape(clean)
-    clean = re.sub(r"\s+", " ", clean).strip()
-
-    noise_terms = [
-        "招待券", "プレゼント", "懸賞", "合唱団", "定期演奏会",
-        "【新機能】", "writevideo", "プレスリリース *",
-        "tel：", "年中無休", "お問合せ 一般のお客様", "お問い合わせ先", "チケット"
-    ]
-    if any(ng in clean.lower() for ng in noise_terms):
-        return f"{company_name}に関する最新の報道・ニュースです。詳細は掲載ページをご確認ください。"
-
-    clean = re.sub(r'[\d\s\.\»\«\>]+最新のニュース.*', '', clean)
-    clean = clean.strip()
-
-    if len(clean) < 15 or clean == title:
-        return f"{company_name}に関する最新の報道・ニュースです。詳細は掲載ページをご確認ください。"
-
-    return clean[:140] + ("..." if len(clean) > 140 else "")
-
-
 # ==========================================
 # 3. HTTP通信ユーティリティ（最新WAF完全回避セッション）
 # ==========================================
@@ -607,7 +580,7 @@ def fetch_url_html(url, referer, headers, ctx):
 
 
 # ==========================================
-# 4. 公式発表パーサー（文字数制限撤廃・直結ペアリング）
+# 4. 公式発表パーサー（文字数制限撤廃＆直結探索）
 # ==========================================
 def parse_official_releases_universal(html_text, base_url, company_info, cutoff_date, today, current_year, seen_urls):
     results = []
@@ -649,7 +622,14 @@ def parse_official_releases_universal(html_text, base_url, company_info, cutoff_
     clean_html = re.sub(r"<svg.*?>.*?</svg>", "", clean_html, flags=re.DOTALL | re.IGNORECASE)
     clean_html = re.sub(r'<nav.*?>.*?</nav>', '', clean_html, flags=re.DOTALL | re.IGNORECASE)
 
-    # 3. 各 <a> タグごとに、文字数制限を撤廃して探索
+    # 近鉄・阪急・JR東日本・近鉄GHD等は文字数制限を撤廃（最大2500文字さかのぼる）
+    # 西鉄・KNT-CT等の通常会社は以前確実に取れていた標準幅（600文字）
+    if cid in ["kintetsu-ghd", "kintetsu-railway", "hankyu", "hankyu-hanshin-hd", "jr-east"]:
+        before_limit = 2500
+    else:
+        before_limit = 600
+
+    # 3. 各 <a> タグごとに探索
     a_matches = list(re.finditer(r'<a\s+[^>]*?href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', clean_html, flags=re.IGNORECASE | re.DOTALL))
     for m in a_matches:
         raw_href = m.group(1).strip().replace(" ", "").replace("\r", "").replace("\n", "").replace("\t", "")
@@ -681,9 +661,9 @@ def parse_official_releases_universal(html_text, base_url, company_info, cutoff_
         # A. リンク内部から日付探索（東急・カード型）
         d_val = parse_date_text(body, current_year)
 
-        # B. リンク手前：文字数制限を撤廃（近鉄・阪急等に対応するため最大2,500文字さかのぼる）
+        # B. リンク手前：文字数制限を撤廃（近鉄・阪急等に対応）
         if not d_val:
-            before_text = clean_html[max(0, start_pos - 2500) : start_pos]
+            before_text = clean_html[max(0, start_pos - before_limit) : start_pos]
             m_dates = list(re.finditer(r'((?:19|20)\d{2}\s*[年\./\-]\s*[0-9]{1,2}\s*[月\./\-]\s*[0-9]{1,2}|令和\s*(?:\d+|元)年\s*[0-9]{1,2}月\s*[0-9]{1,2}日)', before_text))
             if m_dates:
                 last_m = m_dates[-1]
@@ -832,16 +812,16 @@ def fetch_official_releases(company_info, max_days_back=21):
 
 
 # ==========================================
-# 6. 一般ニュース判定＆取得エンジン（完全復元版）
+# 6. 一般ニュース判定＆取得エンジン（完全安定復元版）
 # ==========================================
 def extract_company_keywords(company_name):
-    """会社名から検索マッチ用のキーワード群を正確に生成（カッコ処理バグ解消）"""
+    """会社名から検索マッチ用のキーワード群を正確に生成（カッコ処理バグ解消・近鉄GHD等緩和）"""
     clean_comp = re.sub(r'[\（\(].*?[\）\)]', '', company_name).strip()
     comp_keywords = [clean_comp]
     if "・" in clean_comp:
         comp_keywords.extend(clean_comp.split("・"))
     if "近鉄" in company_name or "近畿日本鉄道" in company_name:
-        comp_keywords.extend(["近鉄", "近畿日本鉄道", "近鉄電車", "近鉄特急", "近鉄GHD", "近鉄グループ"])
+        comp_keywords.extend(["近鉄", "近畿日本鉄道", "近鉄電車", "近鉄特急", "近鉄GHD", "近鉄グループ", "近鉄グループホールディングス"])
     if "阪急" in company_name:
         comp_keywords.extend(["阪急", "阪急電車", "阪急電鉄", "阪急阪神", "阪急線"])
     for suffix in ["鉄道", "電鉄", "電気鉄道", "旅客鉄道"]:
@@ -853,6 +833,7 @@ def extract_company_keywords(company_name):
 
 
 def fetch_general_news(query, company_name, max_days_back=21):
+    """一般ニュース取得（以前の安定動作コードに完全復帰）"""
     results = []
     encoded_q = urllib.parse.quote(query)
     today = datetime.date.today()
@@ -967,8 +948,8 @@ def fetch_general_news(query, company_name, max_days_back=21):
                     source_name = media_label
                     break
 
-            if not source_name:
-                source_name = "ニュース報道"
+            if not source_name or source_name.lower() in ["bing", "bing.com"]:
+                source_name = domain if "bing" not in domain else "ニュース報道"
 
             priority = MEDIA_PRIORITY.get(source_name, 10)
 
@@ -1003,7 +984,7 @@ def fetch_general_news(query, company_name, max_days_back=21):
 # 7. 社別キャッシュエンジン
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_direct_pairing_final_v22"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_strict_direct_and_clean_v23"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
@@ -1546,6 +1527,10 @@ for group_prefix, group_title, comp_list in render_groups:
 
         main_url = comp.get("top_url", comp["urls"][0])
         anchor_id = f"{group_prefix}-{comp['id']}"
+
+        is_manually_hidden = comp["id"] in st.session_state.hidden_companies
+        is_filtered_out = has_filter and (comp["id"] not in st.session_state.selected_filter_companies)
+        should_hide_articles = is_manually_hidden or is_filtered_out
 
         h_col1, h_col2 = st.columns([5, 1.3])
         with h_col1:
