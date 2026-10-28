@@ -7,7 +7,6 @@ import http.cookiejar
 import re
 import ssl
 import time
-import unicodedata
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -88,7 +87,7 @@ elif "reset" in st.query_params:
     st.query_params.clear()
 
 # ==========================================
-# 1. 会社マスタープール（リリースURL最優先・西鉄安定復帰）
+# 1. 会社マスタープール（昨日動作版クエリ完全復元＋近鉄GHD等拡張）
 # ==========================================
 COMPANY_POOL = {
     # --- JR各社 ---
@@ -100,7 +99,7 @@ COMPANY_POOL = {
     },
     "jr-east": {
         "id": "jr-east", "name": "JR東日本", "is_jr_east": True, "top_url": "https://www.jreast.co.jp/",
-        "official_domains": ["jreast.co.jp"],
+        "official_domains": ["jreast.co.jp", "tetsudo.com"],
         "urls": [
             "https://www.jreast.co.jp/press/",
             "https://www.jreast.co.jp/rss/press.xml",
@@ -205,7 +204,7 @@ COMPANY_POOL = {
         "urls": ["https://www.hanshin.co.jp/press/", "https://www.hankyu-hanshin.co.jp/release/", "https://www.hanshin.co.jp/"],
         "query": "阪神電気鉄道 OR 阪神電車",
     },
-    # ★ 阪急電鉄（ニュースリリースページ最優先・文字数制限撤廃）
+    # ★ 阪急電鉄（リリースページ優先）
     "hankyu": {
         "id": "hankyu", "name": "阪急電鉄", "top_url": "https://www.hankyu.co.jp/",
         "official_domains": ["hankyu.co.jp", "hankyu-hanshin.co.jp"],
@@ -216,7 +215,7 @@ COMPANY_POOL = {
         ],
         "query": "阪急電鉄 OR 阪急電車",
     },
-    # ★ 阪急阪神HD（ニュースリリースページ最優先・文字数制限撤廃）
+    # ★ 阪急阪神HD（リリースページ優先）
     "hankyu-hanshin-hd": {
         "id": "hankyu-hanshin-hd", "name": "阪急阪神ホールディングス", "top_url": "https://www.hankyu-hanshin.co.jp/",
         "official_domains": ["hankyu-hanshin.co.jp"],
@@ -226,7 +225,7 @@ COMPANY_POOL = {
         ],
         "query": "阪急阪神ホールディングス OR \"阪急阪神HD\"",
     },
-    # ★ 西日本鉄道（西鉄：ニュースリリースページ最優先・安定復帰）
+    # ★ 西日本鉄道（リリースページ優先）
     "nishitetsu": {
         "id": "nishitetsu", "name": "西日本鉄道", "top_url": "https://www.nishitetsu.co.jp/",
         "official_domains": ["nishitetsu.co.jp"],
@@ -238,7 +237,7 @@ COMPANY_POOL = {
         "query": "西日本鉄道 OR 西鉄",
     },
     # --- 近鉄グループ（17社・海遊館なし） ---
-    # ★ 近鉄GHD（ニュースリリースページ最優先・文字数制限撤廃）
+    # ★ 近鉄GHD（多様なキーワードOR検索に対応）
     "kintetsu-ghd": {
         "id": "kintetsu-ghd", "name": "近鉄GHD", "top_url": "https://www.kintetsu-g-hd.co.jp/",
         "official_domains": ["kintetsu-g-hd.co.jp"],
@@ -247,9 +246,9 @@ COMPANY_POOL = {
             "https://www.kintetsu-g-hd.co.jp/news-kg/",
             "https://www.kintetsu-g-hd.co.jp/",
         ],
-        "query": "近鉄グループホールディングス OR 近鉄GHD",
+        "query": "近鉄グループホールディングス OR 近鉄GHD OR 近鉄グループ OR 近鉄",
     },
-    # ★ 近畿日本鉄道（ニュースリリースページ最優先・文字数制限撤廃）
+    # ★ 近畿日本鉄道（リリースページ優先）
     "kintetsu-railway": {
         "id": "kintetsu-railway", "name": "近畿日本鉄道", "top_url": "https://www.kintetsu.co.jp/",
         "official_domains": ["kintetsu.co.jp"],
@@ -303,7 +302,7 @@ COMPANY_POOL = {
         "urls": ["https://www.miyakohotels.ne.jp/newsrelease/", "https://www.miyakohotels.ne.jp/information/", "https://www.miyakohotels.ne.jp/"],
         "query": '"近鉄・都ホテルズ" OR "都ホテルズ＆リゾーツ" OR "都ホテル"',
     },
-    # ★ KNT-CT（ニュースリリースページ最優先・安定復帰）
+    # ★ KNT-CT（リリースページ優先）
     "knt-ct": {
         "id": "knt-ct", "name": "KNT-CTホールディングス", "top_url": "https://www.kntcthd.co.jp/",
         "official_domains": ["kntcthd.co.jp"],
@@ -823,42 +822,13 @@ def fetch_official_releases(company_info, max_days_back=21):
 
 
 # ==========================================
-# 6. 一般ニュース判定＆取得エンジン（全角ＪＲ正規化・以前の安定コード復元）
+# 6. 一般ニュース判定＆取得エンジン（昨日の gemini-code-1793070457686.py 安定版完全復元）
 # ==========================================
-def extract_company_keywords(company_name):
-    """会社名から検索マッチ用のキーワード群を生成（全角・半角正規化対応）"""
-    clean_comp = re.sub(r'[\（\(].*?[\）\)]', '', company_name).strip()
-    comp_keywords = [clean_comp]
-    if "・" in clean_comp:
-        comp_keywords.extend(clean_comp.split("・"))
-
-    # ★ 近鉄・近鉄GHDへの手厚いキーワード対応
-    if "近鉄" in company_name or "近畿日本鉄道" in company_name:
-        comp_keywords.extend(["近鉄", "近鉄グループ", "近鉄グループホールディングス", "近鉄ghd", "近鉄ホールディングス", "近畿日本鉄道", "近鉄電車", "近鉄特急", "近鉄線"])
-
-    # ★ 阪急・阪急阪神への手厚いキーワード対応
-    if "阪急" in company_name:
-        comp_keywords.extend(["阪急", "阪急電車", "阪急電鉄", "阪急阪神", "阪急線"])
-
-    # ★ 東急電鉄への対応
-    if "東急" in company_name:
-        comp_keywords.extend(["東急", "東急電鉄", "東急線"])
-
-    # ★ JR各社への対応
-    if company_name.startswith("JR") or company_name.startswith("ＪＲ"):
-        comp_keywords.extend([company_name, company_name.replace("JR", "ＪＲ")])
-
-    for suffix in ["鉄道", "電鉄", "電気鉄道", "旅客鉄道"]:
-        if clean_comp.endswith(suffix):
-            short = clean_comp[:-len(suffix)]
-            if len(short) >= 2:
-                comp_keywords.append(short)
-
-    return list(set(comp_keywords))
-
-
 def fetch_general_news(query, company_name, max_days_back=21):
-    """一般ニュース取得（以前確実に動いていたコードに完全復帰＋Unicode正規化）"""
+    """
+    昨日の gemini-code-1793070457686.py の安定動作エンジンを完全復元
+    Google News RSS ＋ Bing News RSS の二重系で過剰な本文判定を行わず素直に採用
+    """
     results = []
     encoded_q = urllib.parse.quote(query)
     today = datetime.date.today()
@@ -866,144 +836,150 @@ def fetch_general_news(query, company_name, max_days_back=21):
 
     ctx = ssl._create_unverified_context()
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept": "application/rss+xml, application/xml, text/xml, */*",
     }
 
-    rss_url = f"https://www.bing.com/news/search?q={encoded_q}&format=rss&mkt=ja-JP"
+    # 昨日の gemini-code-1793070457686.py と全く同じ二重系エンドポイント
+    endpoints = [
+        f"https://news.google.com/rss/search?q={encoded_q}&hl=ja&gl=JP&ceid=JP:ja",
+        f"https://www.bing.com/news/search?q={encoded_q}&format=rss&mkt=ja-JP"
+    ]
 
-    try:
-        req = urllib.request.Request(rss_url, headers=headers)
-        with urllib.request.urlopen(req, context=ctx, timeout=8) as res:
-            xml_data = res.read()
-            if xml_data[:2] == b"\x1f\x8b":
-                xml_data = gzip.decompress(xml_data)
+    seen_links = set()
 
-        root = ET.fromstring(xml_data)
-        for item in root.findall(".//item"):
-            title_el = item.find("title")
-            link_el = item.find("link")
-            pubdate_el = item.find("pubDate")
-            desc_el = item.find("description")
+    for rss_url in endpoints:
+        try:
+            req = urllib.request.Request(rss_url, headers=headers)
+            with urllib.request.urlopen(req, context=ctx, timeout=8) as res:
+                xml_data = res.read()
+                if xml_data[:2] == b"\x1f\x8b":
+                    xml_data = gzip.decompress(xml_data)
 
-            if title_el is None or link_el is None:
-                continue
+            root = ET.fromstring(xml_data)
+            for item in root.findall(".//item"):
+                title_el = item.find("title")
+                link_el = item.find("link")
+                pubdate_el = item.find("pubDate")
+                desc_el = item.find("description")
 
-            raw_title = title_el.text or ""
-            link = (link_el.text or "").strip()
-            pubdate_str = pubdate_el.text if pubdate_el is not None else ""
-            desc = desc_el.text if desc_el is not None else ""
+                if title_el is None or link_el is None:
+                    continue
 
-            if not link or "news.google.com" in link:
-                continue
+                raw_title = title_el.text or ""
+                link = (link_el.text or "").strip()
+                pubdate_str = pubdate_el.text if pubdate_el is not None else ""
+                desc = desc_el.text if desc_el is not None else ""
 
-            if "bing.com" in link:
-                u_match = re.search(r'[?&]u=a1([a-zA-Z0-9_\-]+)', link)
-                if u_match:
+                if not link or link in seen_links:
+                    continue
+
+                # Bing URLデコード対応
+                if "bing.com" in link:
+                    u_match = re.search(r'[?&]u=a1([a-zA-Z0-9_\-]+)', link)
+                    if u_match:
+                        try:
+                            b64_str = u_match.group(1)
+                            b64_str += '=' * (-len(b64_str) % 4)
+                            decoded_bytes = base64.urlsafe_b64decode(b64_str)
+                            real_url = decoded_bytes.decode('utf-8', errors='ignore')
+                            if real_url.startswith("http"):
+                                link = real_url
+                        except Exception:
+                            pass
+
+                item_date = None
+                if pubdate_str:
                     try:
-                        b64_str = u_match.group(1) + '=' * (-len(u_match.group(1)) % 4)
-                        decoded_bytes = base64.urlsafe_b64decode(b64_str)
-                        real_url = decoded_bytes.decode('utf-8', errors='ignore')
-                        if real_url.startswith("http"):
-                            link = real_url
+                        dt = email.utils.parsedate_to_datetime(pubdate_str)
+                        jst = dt.astimezone(JST)
+                        item_date = jst.date()
                     except Exception:
                         pass
 
-            item_date = None
-            if pubdate_str:
-                try:
-                    dt = email.utils.parsedate_to_datetime(pubdate_str)
-                    jst = dt.astimezone(JST)
-                    item_date = jst.date()
-                except Exception:
-                    pass
-
-            if not item_date or not (cutoff_date <= item_date <= today):
-                continue
-
-            clean_title = raw_title.strip()
-            clean_desc = re.sub(r"<[^>]+>", " ", desc)
-            clean_desc = html.unescape(clean_desc)
-            clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
-
-            combined_text = (clean_title + " " + clean_desc).lower()
-
-            noise_keywords = [
-                "招待券", "プレゼント", "懸賞", "合唱団", "定期演奏会",
-                "警察weekly", "県警weekly", "現行犯逮捕", "酒酔い運転", "ひき逃げ",
-                "安全運転管理者", "死亡事故", "容疑で逮捕", "書類送検"
-            ]
-            if any(ng in combined_text for ng in noise_keywords):
-                continue
-
-            # ★ 全角・半角をNFKC正規化（新聞社の「ＪＲ」と半角「JR」を完全統一）
-            norm_combined = unicodedata.normalize('NFKC', combined_text).lower()
-
-            strict_companies = ["奈良交通", "近鉄バス", "三重交通", "志摩スペイン村", "あべのハルカス美術館"]
-            if company_name in strict_companies:
-                norm_comp = unicodedata.normalize('NFKC', company_name).lower()
-                if norm_comp not in norm_combined:
-                    continue
-            else:
-                comp_keywords = extract_company_keywords(company_name)
-                # 全角・半角のどちらでもマッチするよう正規化して判定
-                if not any(unicodedata.normalize('NFKC', kw).lower() in norm_combined for kw in comp_keywords):
+                if not item_date or not (cutoff_date <= item_date <= today):
                     continue
 
-            summary = clean_news_summary(clean_desc, clean_title, company_name)
+                clean_title = raw_title.strip()
+                clean_desc = re.sub(r"<[^>]+>", " ", desc)
+                clean_desc = html.unescape(clean_desc)
+                clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
 
-            source_name = ""
-            for child in item:
-                tag_name = child.tag.split("}")[-1].lower()
-                if "source" in tag_name:
-                    txt = (child.text or "").strip()
-                    if txt and txt.lower() not in ["bing", "bing.com"]:
-                        source_name = txt
-                        break
+                combined_text = (clean_title + " " + clean_desc).lower()
 
-            if not source_name or source_name.lower() in ["bing", "bing.com"]:
-                if " - " in clean_title:
+                # 明らかな警察・事件・プレゼント系ノイズのみ除外
+                noise_keywords = [
+                    "招待券", "プレゼント", "懸賞", "合唱団", "定期演奏会",
+                    "警察weekly", "県警weekly", "現行犯逮捕", "酒酔い運転", "ひき逃げ",
+                    "安全運転管理者", "死亡事故", "容疑で逮捕", "書類送検"
+                ]
+                if any(ng in combined_text for ng in noise_keywords):
+                    continue
+
+                # 昨日の gemini-code-1793070457686.py 同様、検索クエリヒット結果を素直に採用
+                seen_links.add(link)
+                summary = clean_news_summary(clean_desc, clean_title, company_name)
+
+                source_name = ""
+                source_el = item.find("source")
+                if source_el is not None and source_el.text:
+                    source_name = source_el.text.strip()
+
+                if not source_name and " - " in clean_title:
                     parts = clean_title.rsplit(" - ", 1)
                     cand = parts[1].strip()
                     clean_title = parts[0].strip()
-                    if cand and cand.lower() not in ["bing", "bing.com"]:
+                    if cand:
                         source_name = cand
 
-            parsed_url = urllib.parse.urlparse(link)
-            domain = parsed_url.netloc.lower().replace("www.", "")
+                parsed_url = urllib.parse.urlparse(link)
+                domain = parsed_url.netloc.lower().replace("www.", "")
 
-            for domain_key, media_label in MEDIA_NAME_MAP.items():
-                if domain_key in domain:
-                    source_name = media_label
-                    break
+                for domain_key, media_label in MEDIA_NAME_MAP.items():
+                    if domain_key in domain:
+                        source_name = media_label
+                        break
 
-            if not source_name or source_name.lower() in ["bing", "bing.com"]:
-                source_name = domain if "bing" not in domain else "ニュース報道"
+                if not source_name:
+                    source_name = "ニュース報道"
 
-            priority = MEDIA_PRIORITY.get(source_name, 10)
+                priority = MEDIA_PRIORITY.get(source_name, 10)
 
-            results.append({
-                "date": item_date,
-                "type": "ニュース（一般サイト）",
-                "title": clean_title,
-                "summary": summary,
-                "url": link,
-                "pdf_url": None,
-                "source": source_name,
-                "is_pdf": False,
-                "priority": priority,
-            })
-    except Exception:
-        pass
+                results.append({
+                    "date": item_date,
+                    "type": "ニュース（一般サイト）",
+                    "title": clean_title,
+                    "summary": summary,
+                    "url": link,
+                    "pdf_url": None,
+                    "source": source_name,
+                    "is_pdf": False,
+                    "priority": priority,
+                })
+        except Exception:
+            pass
 
-    return results
+        if results:
+            break
+
+    # 同一見出し重複排除（メジャー媒体優先）
+    deduped_dict = {}
+    for item in results:
+        norm_key = re.sub(r'[\s\u3000・―\-―：:【】「」『』\(\)]+', '', item['title']).lower()
+        if norm_key in deduped_dict:
+            if item["priority"] > deduped_dict[norm_key]["priority"]:
+                deduped_dict[norm_key] = item
+        else:
+            deduped_dict[norm_key] = item
+
+    return list(deduped_dict.values())
 
 
 # ==========================================
-# 7. 社別キャッシュエンジン
+# 7. 社別キャッシュエンジン（キャッシュ完全リフレッシュ）
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_restore_exact_original_news_and_nfkc_v26"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_restored_perfect_news_engine_v30"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
