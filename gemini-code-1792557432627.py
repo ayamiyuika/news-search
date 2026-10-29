@@ -53,13 +53,11 @@ NAV_EXCLUDE_WORDS = {
     "空港リムジンバス", "路線バス", "貸切バス", "高速バス"
 }
 
-# セッションステートの初期化（ご要望通り両方True＝青色でスタート）
+# セッションステートの初期化（ご要望通りの完全排他：初期は公式発表のみ青色）
 today = datetime.datetime.now(JST).date()
 
-if "show_official" not in st.session_state:
-    st.session_state.show_official = True     # 初期：公式発表ON（青色）
-if "show_news" not in st.session_state:
-    st.session_state.show_news = True         # 初期：ニュースON（青色）
+if "view_mode" not in st.session_state:
+    st.session_state.view_mode = "official"  # "official"（公式発表のみ） または "news"（ニュースのみ）
 if "period_days" not in st.session_state:
     st.session_state.period_days = 3          # 初期：3日間
 if "custom_date_range" not in st.session_state:
@@ -1115,7 +1113,7 @@ def fetch_general_news(query, company_dict, max_days_back=21):
 # 7. 社別キャッシュエンジン
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_restored_perfect_direct_news_v950"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_restored_perfect_direct_news_v990"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
@@ -1184,41 +1182,27 @@ st.markdown(
 )
 
 # ==========================================
-# 9. サイドバー操作パネル（新ボタントグル仕様・カレンダー・免責事項）
+# 9. サイドバー操作パネル（ご指定の新排他ボタンスイッチ仕様）
 # ==========================================
 with st.sidebar:
     st.header("⚙️ 設定")
 
-    # --- 1. 表示モード切り替え（ご要望通りの新トグルルール） ---
+    # --- 1. 表示モード切り替え（ご指定通りの完全排他スイッチ：初期は公式のみ青色） ---
     st.write("**1. 表示モード切り替え**")
-    btn_type_off = "primary" if st.session_state.show_official else "secondary"
-    btn_type_news = "primary" if st.session_state.show_news else "secondary"
+    is_official_mode = (st.session_state.view_mode == "official")
+    btn_type_off = "primary" if is_official_mode else "secondary"
+    btn_type_news = "secondary" if is_official_mode else "primary"
 
     col_m1, col_m2 = st.columns(2)
     with col_m1:
         if st.button("📢 公式発表", key="btn_mode_official", type=btn_type_off, use_container_width=True):
-            if st.session_state.show_official and st.session_state.show_news:
-                st.session_state.show_official = False
-                st.session_state.show_news = True
-            elif st.session_state.show_official and not st.session_state.show_news:
-                st.session_state.show_official = False
-                st.session_state.show_news = True
-            elif not st.session_state.show_official and st.session_state.show_news:
-                st.session_state.show_official = True
-                st.session_state.show_news = True
+            # 灰色の公式発表をクリックすると公式発表が青色になり、ニュースは灰色になる（両方灰色にはならない）
+            st.session_state.view_mode = "official"
             st.rerun()
-
     with col_m2:
         if st.button("📰 ニュース", key="btn_mode_news", type=btn_type_news, use_container_width=True):
-            if st.session_state.show_official and st.session_state.show_news:
-                st.session_state.show_official = True
-                st.session_state.show_news = False
-            elif not st.session_state.show_official and st.session_state.show_news:
-                st.session_state.show_official = True
-                st.session_state.show_news = False
-            elif st.session_state.show_official and not st.session_state.show_news:
-                st.session_state.show_official = True
-                st.session_state.show_news = True
+            # 灰色のニュースをクリックするとニュースが青色になり、公式発表は灰色になる（両方灰色にはならない）
+            st.session_state.view_mode = "news"
             st.rerun()
 
     st.markdown("---")
@@ -1625,10 +1609,9 @@ components.html(
 )
 
 # ==========================================
-# 12. 結果の描画（完全絞り込み＆排他トグル表示）
+# 12. 結果の描画（完全絞り込み＆完全排他表示）
 # ==========================================
-show_official = st.session_state.show_official
-show_news = st.session_state.show_news
+view_mode = st.session_state.view_mode  # "official" または "news"
 
 for group_prefix, group_title, comp_list in render_groups:
     if has_filter:
@@ -1658,15 +1641,19 @@ for group_prefix, group_title, comp_list in render_groups:
         official_items.sort(key=lambda x: x["date"], reverse=True)
         general_items.sort(key=lambda x: x["date"], reverse=True)
 
-        display_items = []
-        if show_official:
-            display_items.extend(official_items)
-        if show_news:
-            display_items.extend(general_items)
+        # ★ 排他スイッチ：どちらか片方のみを完全に選択表示
+        if view_mode == "official":
+            display_items = official_items
+        else:
+            display_items = general_items
 
-        # 公式リンク先はご指定通りのトップまたはリリースページ（西鉄・小田急等）を参照
+        # 公式リンク先はご指定通りのトップまたはリリースページ（西鉄・小田急・阪急等）を参照
         main_url = comp.get("top_url", comp["urls"][0])
         anchor_id = f"{group_prefix}-{comp['id']}"
+
+        is_manually_hidden = comp["id"] in st.session_state.hidden_companies
+        is_filtered_out = has_filter and (comp["id"] not in st.session_state.selected_filter_companies)
+        should_hide_articles = is_manually_hidden or is_filtered_out
 
         h_col1, h_col2 = st.columns([5, 1.3])
         with h_col1:
@@ -1688,13 +1675,8 @@ for group_prefix, group_title, comp_list in render_groups:
                 st.rerun()
 
         if not display_items:
-            type_labels = []
-            if show_official:
-                type_labels.append("公式発表")
-            if show_news:
-                type_labels.append("ニュース")
-            t_str = "・".join(type_labels) if type_labels else "記事"
-            st.info(f"📅 指定期間内の **{t_str}** は **なし** です。")
+            mode_str = "公式発表" if view_mode == "official" else "ニュース"
+            st.info(f"📅 指定期間内の **{mode_str}** は **なし** です。")
             st.write("")
         else:
             for item in display_items:
