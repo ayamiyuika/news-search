@@ -82,11 +82,10 @@ if "selected_genres" not in st.session_state:
 if "diag_logs" not in st.session_state:
     st.session_state.diag_logs = {}
 
-# ★ クエリパラメータ処理（表示モードview_modeの保持を最優先）
+# クエリパラメータ処理（表示モードview_modeの保持）
 selected_from_query_c = []
 selected_from_query_g = []
 try:
-    # フォーム送信時または解除時にview_modeを引き継ぐ
     if "vm" in st.query_params:
         vm_val = st.query_params.get("vm")
         if vm_val in ["official", "news"]:
@@ -465,6 +464,7 @@ def parse_date_text(raw_text, current_year):
     text = re.sub(r"<[^>]+>", " ", raw_text)
     text = text.translate(zen_to_han)
 
+    # 西暦（過去年を拾わないよう4桁年号を厳格チェック）
     m_seireki = re.search(r"((?:19|20)\d{2})\s*[年\./\-]\s*([0-9]{1,2})\s*[月\./\-]\s*([0-9]{1,2})\s*日?", text)
     if m_seireki:
         try:
@@ -472,6 +472,7 @@ def parse_date_text(raw_text, current_year):
         except ValueError:
             pass
 
+    # 令和
     m_reiwa = re.search(r"令和\s*([0-9]+|元)\s*年\s*([0-9]{1,2})\s*月\s*([0-9]{1,2})\s*日", text)
     if m_reiwa:
         y_val = 1 if m_reiwa.group(1) == "元" else int(m_reiwa.group(1))
@@ -504,7 +505,7 @@ def clean_title_advanced(raw_title, company_info):
     t = re.sub(r'^(?:NEW|新着)\s*(?:企業情報|企業|リリース|お知らせ)?\s*[:：|｜・\s\-]*', '', t, flags=re.I)
     t = re.sub(r'^(?:企業情報|企業|お知らせ|ニュースリリース|プレスリリース)\s*[:：|｜・\s\-]+', '', t)
 
-    # 末尾の日付パターン削除（三交ホールディングス等）
+    # 末尾の日付パターン削除
     t = re.sub(r'[\s:：|｜・\-]+(?:(?:19|20)\d{2}[年\.\/\-]\s*\d{1,2}[月\.\/\-]\s*\d{1,2}日?)\s*$', '', t)
 
     # 末尾の [PDF: 1.6MB] や [PDF] などを除去
@@ -585,23 +586,23 @@ def classify_article_advanced(title, summary=""):
     """記事のタイトルと要約から適切な分類タグを判定"""
     text = (title + " " + summary).lower()
 
-    # 1. 車両・運行 (新型車両、列車事故、ダイヤ、運休など)
+    # 1. 車両・運行
     if any(w in text for w in ["新型車両", "新車", "引退", "ラストラン", "ダイヤ", "運行", "運転", "特急", "新幹線", "自動運転", "ato", "運休", "遅延", "事故", "脱線", "見合わせ", "運転見合わせ", "故障", "トラブル", "踏切", "安全確認", "振替", "車両"]):
         return ("車両・運行", "#0284c7", "#e0f2fe", "#7dd3fc")
 
-    # 2. 経済 (会社の業績、赤字路線、決算、セール等)
+    # 2. 経済
     if any(w in text for w in ["業績", "決算", "赤字", "赤字路線", "黒字", "増益", "減益", "純利益", "売上", "収支", "存廃", "運賃改定", "値上げ", "セール", "優勝セール", "記念セール", "株価", "投資", "配当", "下方修正", "上方修正", "最高益", "経済", "インバウンド"]):
         return ("経済", "#b45309", "#fef3c7", "#fcd34d")
 
-    # 3. イベント (鉄道まつり、見学会、キャンペーンなど)
+    # 3. イベント
     if any(w in text for w in ["鉄道まつり", "見学会", "撮影会", "イベント", "まつり", "フェス", "スタンプラリー", "キャンペーン", "体験", "記念", "ツアー", "グッズ", "限定", "企画", "フェア", "マルシェ", "展示"]):
         return ("イベント", "#be185d", "#fce7f3", "#f472b6")
 
-    # 4. 経営 (子会社、再編、人事、戦略など)
+    # 4. 経営
     if any(w in text for w in ["子会社", "再編", "提携", "買収", "事業承継", "人事", "役員", "経営", "戦略", "社長", "就任", "撤退", "設立", "資本業務提携", "グループhd", "ホールディングス"]):
         return ("経営", "#4338ca", "#e0e7ff", "#a5b4fc")
 
-    # 5. 地域 (まちづくり、再開発、新駅など)
+    # 5. 地域
     if any(w in text for w in ["まちづくり", "再開発", "新駅", "地域", "自治体", "沿線", "駅前", "商業施設", "協定", "連携", "包括連携", "オープン", "開業", "リニューアル", "新店舗"]):
         return ("地域", "#047857", "#d1fae5", "#6ee7b7")
 
@@ -718,7 +719,6 @@ def fetch_url_html(url, referer, headers, ctx):
 # 4. ★ PR TIMES専用リリース取得エンジン（JR東日本・近鉄GHD・近鉄・阪急対応）
 # ==========================================
 def fetch_prtimes_releases(prtimes_url, company_info, cutoff_date, today, current_year):
-    """PR TIMESの公式企業リリース一覧から見出し・内容・直リンクを100%確実に取得"""
     results = []
     seen = set()
     ctx = ssl._create_unverified_context()
@@ -801,7 +801,7 @@ def parse_official_releases_universal(html_text, base_url, company_info, cutoff_
     cid = company_info["id"]
     is_jr_east = company_info.get("is_jr_east", False)
 
-    # 1. RSS/Atom フィード（最優先解析）
+    # 1. RSS/Atom フィード
     if "<rss" in html_text or "<feed" in html_text or "<rdf:RDF" in html_text:
         for item_xml in re.findall(r"<(?:item|entry)>(.*?)</(?:item|entry)>", html_text, flags=re.DOTALL):
             t_m = re.search(r"<title>(.*?)</title>", item_xml, flags=re.DOTALL)
@@ -911,7 +911,6 @@ def fetch_official_releases(company_info, max_days_back=21):
         "status": "INIT"
     }
 
-    # PR TIMES直接取得（JR東日本、近鉄GHD、近鉄、阪急電鉄等）
     if "prtimes_url" in company_info:
         pr_items = fetch_prtimes_releases(company_info["prtimes_url"], company_info, cutoff_date, today, current_year)
         results.extend(pr_items)
@@ -919,7 +918,6 @@ def fetch_official_releases(company_info, max_days_back=21):
             seen_urls.add(it["url"])
         log_entry["tried_urls"].append(f"PRTIMES: {company_info['prtimes_url']} -> [{len(pr_items)}件取得]")
 
-    # 通常サイト巡回
     has_403 = False
     for url in company_info["urls"]:
         if "prtimes.jp" in url:
@@ -935,7 +933,6 @@ def fetch_official_releases(company_info, max_days_back=21):
             if results:
                 break
 
-    # JR東日本 救済バイパス
     if cid == "jr-east" and (not results or has_403):
         rescue_q = "site:jreast.co.jp/press"
         encoded_q = urllib.parse.quote(rescue_q)
@@ -1006,7 +1003,7 @@ def fetch_official_releases(company_info, max_days_back=21):
 
 
 # ==========================================
-# 6. 一般ニュース取得エンジン（元サイト直リンク化・検索窓URL完全廃止・長文サマリー保持）
+# 6. 一般ニュース取得エンジン（Google News直リンク自動復元・破棄バグ完全撤廃）
 # ==========================================
 def extract_direct_article_url(raw_link, clean_title, source_name):
     """
@@ -1062,8 +1059,6 @@ def extract_direct_article_url(raw_link, clean_title, source_name):
             except Exception:
                 pass
 
-        # ★★★ news.google.com を開くと「アクセス権がありません」になるため、
-        # 社内でも確実に通る Yahoo!検索（タイトル＋媒体名）へ安全変換（Google検索窓は作らない）
         search_q = f"{clean_title} {source_name}".strip()
         return f"https://search.yahoo.co.jp/search?p={urllib.parse.quote(search_q)}"
 
@@ -1134,7 +1129,6 @@ def fetch_general_news(query, company_dict, max_days_back=21):
                     if cand:
                         source_name = cand
 
-                # 個別記事の直リンクを直接復元
                 real_link = extract_direct_article_url(raw_link, clean_title, source_name)
                 if not real_link:
                     real_link = raw_link
@@ -1231,7 +1225,7 @@ def fetch_general_news(query, company_dict, max_days_back=21):
 # 7. 社別キャッシュエンジン
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_sidebar_details_expand_v1"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_sidebar_details_expand_v5"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
@@ -1373,7 +1367,7 @@ render_groups = [
 ]
 
 # ==========================================
-# 9. サイドバー操作パネル（ご要望の全順序・新機能完全準拠）
+# 9. サイドバー操作パネル
 # ==========================================
 with st.sidebar:
     st.header("⚙️ 設定・抽出条件")
@@ -1392,6 +1386,9 @@ with st.sidebar:
     with col_m2:
         if st.button("📰 ニュース", key="btn_mode_news", type=btn_type_news, use_container_width=True):
             st.session_state.view_mode = "news"
+            # ★ ご要望通り「ニュース」選択時に自動的に「本日（24時間）」に切り替え
+            st.session_state.period_days = 1
+            st.session_state.custom_date_range = (today, today)
             st.rerun()
 
     st.markdown("---")
@@ -1441,7 +1438,7 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # --- 3. 表示する会社（表示モードvmを引き継ぐ） ---
+    # --- 3. 表示する会社（表示モードvmを保持） ---
     st.write("**3. 表示する会社**")
     st.caption("※選ばない場合は全社表示になります。")
 
@@ -1485,7 +1482,7 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # --- 4. ジャンル（表示モードvmを引き継ぐ） ---
+    # --- 4. ジャンル（表示モードvmを保持） ---
     st.write("**4. ジャンル（内容タグ）**")
     st.caption("※選ばない場合は全ジャンル表示になります。")
 
@@ -1624,7 +1621,7 @@ if "last_fetch_time" not in st.session_state:
 st.caption(f"🕒 最終巡回時刻: {st.session_state.last_fetch_time.strftime('%Y-%m-%d %H:%M:%S')} (日本時間) （1時間ごとに自動再巡回）")
 
 # ==========================================
-# 11. 結果の描画（完全排他表示・長文3〜5行＋続きを読む展開）
+# 11. 結果の描画（5行程度表示＋続きを読むアコーディオン展開）
 # ==========================================
 view_mode = st.session_state.view_mode  # "official" または "news"
 has_comp_filter = len(st.session_state.selected_filter_companies) > 0
@@ -1745,7 +1742,7 @@ for group_prefix, group_title, comp_list in render_groups:
                         st.markdown(file_badge)
                         st.caption(f"情報元: {item['source']}")
 
-                        # 分類タグの表示（ボタン風バッジ）
+                        # 分類タグ
                         tag_name, tag_color, tag_bg, tag_border = item.get(
                             "tag_info", ("一般", "#475569", "#f8fafc", "#cbd5e1")
                         )
@@ -1766,29 +1763,29 @@ for group_prefix, group_title, comp_list in render_groups:
                             unsafe_allow_html=True,
                         )
 
-                        # ★ 本文の3〜5行表示 ＋「（続きを読む）」展開アコーディオン
+                        # ★ ご要望通り「5行程度（約260〜280文字）」まで表示を拡大し、続きを読むで全文展開
                         if item.get("summary"):
                             summary_text = item["summary"]
                             title_text = item["title"]
 
-                            # 約130文字（日本語で3〜5行程度）を基準に判定
-                            char_threshold = 130
+                            # 約260文字（PCワイド画面で約5行分の分量）
+                            char_threshold = 260
                             if len(summary_text) <= char_threshold or summary_text == title_text:
                                 st.markdown(
-                                    f"<div style='margin-top:6px; color:#334155; font-size:0.9em; line-height:1.6;'><b>主な内容:</b> {summary_text}</div>",
+                                    f"<div style='margin-top:6px; color:#334155; font-size:0.91em; line-height:1.65;'><b>主な内容:</b> {summary_text}</div>",
                                     unsafe_allow_html=True,
                                 )
                             else:
                                 lead_text = summary_text[:char_threshold] + "..."
                                 st.markdown(
                                     f"""
-                                    <div style='margin-top:6px; color:#334155; font-size:0.9em; line-height:1.6;'>
+                                    <div style='margin-top:6px; color:#334155; font-size:0.91em; line-height:1.65;'>
                                         <b>主な内容:</b> {lead_text}
-                                        <details style='margin-top: 4px;'>
+                                        <details style='margin-top: 5px;'>
                                             <summary style='cursor: pointer; color: #1e3a8a; font-weight: 700; outline: none; user-select: none; font-size: 0.95em;'>
                                                 ▶ （続きを読む）
                                             </summary>
-                                            <div style='margin-top: 6px; padding: 10px 14px; background-color: #f8fafc; border-left: 3px solid #1e3a8a; border-radius: 4px; color: #1e293b; line-height: 1.7;'>
+                                            <div style='margin-top: 6px; padding: 10px 14px; background-color: #f8fafc; border-left: 3px solid #1e3a8a; border-radius: 4px; color: #1e293b; line-height: 1.75;'>
                                                 {summary_text}
                                             </div>
                                         </details>
