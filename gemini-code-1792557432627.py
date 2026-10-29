@@ -28,7 +28,7 @@ st.title("🚆 全国大手鉄道会社 公式発表・ニュース 概要")
 st.caption("JR・大手私鉄・近鉄グループ各社の公式発表・最新ニュースを一覧表示します。")
 
 # ==========================================
-# 0. メディアマップ＆除外ブラックリスト
+# 0. メディアマップ＆ナビゲーション除外ブラックリスト
 # ==========================================
 MEDIA_NAME_MAP = {
     "asahi.com": "朝日新聞デジタル", "nikkei.com": "日本経済新聞", "yomiuri.co.jp": "読売新聞オンライン",
@@ -93,7 +93,7 @@ elif "reset" in st.query_params:
     st.query_params.clear()
 
 # ==========================================
-# 1. 会社マスタープール（西鉄・小田急等のリリースページ最優先設定）
+# 1. 会社マスタープール（ご指定リリースページ最優先設定）
 # ==========================================
 COMPANY_POOL = {
     # --- JR各社 ---
@@ -153,7 +153,7 @@ COMPANY_POOL = {
     "keisei": {
         "id": "keisei", "name": "京成電鉄", "top_url": "https://www.keisei.co.jp/",
         "official_domains": ["keisei.co.jp"],
-        "urls": ["https://www.keisei.co.jp/news/", "https://www.keisei.co.jp/"],
+        "urls": ["https://www.keisei.co.jp/", "https://www.keisei.co.jp/news/"],
         "query": "京成電鉄",
     },
     "keio": {
@@ -162,11 +162,11 @@ COMPANY_POOL = {
         "urls": ["https://www.keio.co.jp/news/update/news_release/", "https://www.keio.co.jp/news/update/index.html", "https://www.keio.co.jp/"],
         "query": "京王電鉄",
     },
-    # ★ 小田急電鉄（ニュースリリースページ最優先）
+    # ★ 小田急電鉄（ご指定の「ニュースリリース」ページ最優先）
     "odakyu": {
-        "id": "odakyu", "name": "小田急電鉄", "top_url": "https://www.odakyu.jp/news/",
+        "id": "odakyu", "name": "小田急電鉄", "top_url": "https://www.odakyu.jp/company/about/news/",
         "official_domains": ["odakyu.jp"],
-        "urls": ["https://www.odakyu.jp/news/", "https://www.odakyu.jp/company/about/news/", "https://www.odakyu.jp/"],
+        "urls": ["https://www.odakyu.jp/company/about/news/", "https://www.odakyu.jp/news/"],
         "query": "小田急電鉄",
     },
     # ★ 東急電鉄（東急を含む：お知らせ・ニュースリリースの両方を巡回）
@@ -180,8 +180,9 @@ COMPANY_POOL = {
         ],
         "query": "東急電鉄 OR 東急",
     },
+    # ★ 京浜急行電鉄
     "keikyu": {
-        "id": "keikyu", "name": "京浜急行電鉄", "top_url": "https://www.keikyu.co.jp/",
+        "id": "keikyu", "name": "京浜急行電鉄", "top_url": "https://www.keikyu.co.jp/company/news/",
         "official_domains": ["keikyu.co.jp"],
         "urls": ["https://www.keikyu.co.jp/company/news/", "https://www.keikyu.co.jp/report/", "https://www.keikyu.co.jp/"],
         "query": "京浜急行電鉄 OR 京急",
@@ -216,11 +217,12 @@ COMPANY_POOL = {
         "urls": ["https://www.hanshin.co.jp/press/", "https://www.hankyu-hanshin.co.jp/release/", "https://www.hanshin.co.jp/"],
         "query": "阪神電気鉄道 OR 阪神電車",
     },
-    # ★ 阪急電鉄（リリースページ優先）
+    # ★ 阪急電鉄（ご指定の「ニュースリリース 2026年度」最優先）
     "hankyu": {
-        "id": "hankyu", "name": "阪急電鉄", "top_url": "https://www.hankyu.co.jp/",
+        "id": "hankyu", "name": "阪急電鉄", "top_url": "https://www.hankyu.co.jp/company/news/2026.html",
         "official_domains": ["hankyu.co.jp", "hankyu-hanshin.co.jp"],
         "urls": [
+            "https://www.hankyu.co.jp/company/news/2026.html",
             "https://www.hankyu.co.jp/company/news/index.html",
             "https://www.hankyu.co.jp/company/news/",
             "https://www.hankyu-hanshin.co.jp/release/",
@@ -229,7 +231,7 @@ COMPANY_POOL = {
     },
     # ★ 阪急阪神HD（リリースページ優先）
     "hankyu-hanshin-hd": {
-        "id": "hankyu-hanshin-hd", "name": "阪急阪神ホールディングス", "top_url": "https://www.hankyu-hanshin.co.jp/",
+        "id": "hankyu-hanshin-hd", "name": "阪急阪神ホールディングス", "top_url": "https://www.hankyu-hanshin.co.jp/release/",
         "official_domains": ["hankyu-hanshin.co.jp"],
         "urls": [
             "https://www.hankyu-hanshin.co.jp/release/",
@@ -237,38 +239,34 @@ COMPANY_POOL = {
         ],
         "query": "阪急阪神ホールディングス OR \"阪急阪神HD\"",
     },
-    # ★ 西日本鉄道（ご要望通りニュースリリースページをリンク先に設定）
+    # ★ 西日本鉄道（ご指定通りニュースリリースページをリンク先および最優先巡回先に設定）
     "nishitetsu": {
         "id": "nishitetsu", "name": "西日本鉄道", "top_url": "https://www.nishitetsu.co.jp/ja/news.html",
         "official_domains": ["nishitetsu.co.jp"],
         "urls": [
             "https://www.nishitetsu.co.jp/ja/news.html",
             "https://www.nishitetsu.co.jp/release/",
-            "https://www.nishitetsu.co.jp/",
         ],
         "query": "西日本鉄道 OR 西鉄",
     },
     # --- 近鉄グループ（17社・海遊館なし） ---
-    # ★ 近鉄GHD（お知らせ・ニュースリリースの両方を巡回）
+    # ★ 近鉄GHD（お知らせ・ニュースリリースの両方を直接巡回・子会社記事も捕捉）
     "kintetsu-ghd": {
         "id": "kintetsu-ghd", "name": "近鉄GHD", "top_url": "https://www.kintetsu-g-hd.co.jp/news-hd/",
         "official_domains": ["kintetsu-g-hd.co.jp"],
         "urls": [
             "https://www.kintetsu-g-hd.co.jp/news-hd/",
             "https://www.kintetsu-g-hd.co.jp/news-kg/",
-            "https://www.kintetsu-g-hd.co.jp/",
         ],
         "query": "近鉄グループホールディングス OR 近鉄グループHD OR 近鉄GHD OR 近鉄グループ OR 近鉄",
     },
-    # ★ 近畿日本鉄道（お知らせ・ニュースリリースの両方を巡回）
+    # ★ 近畿日本鉄道（お知らせ・ニュースリリースの両方を直接巡回）
     "kintetsu-railway": {
         "id": "kintetsu-railway", "name": "近畿日本鉄道", "top_url": "https://www.kintetsu.co.jp/all_news/whatsnew.html",
         "official_domains": ["kintetsu.co.jp"],
         "urls": [
             "https://www.kintetsu.co.jp/all_news/whatsnew.html",
             "https://www.kintetsu.co.jp/all_info/whatsnew.html",
-            "https://www.kintetsu.co.jp/all_news/",
-            "https://www.kintetsu.co.jp/",
         ],
         "query": "近畿日本鉄道 OR 近鉄電車 OR 近鉄特急 OR 近鉄線 OR 近鉄",
     },
@@ -310,12 +308,12 @@ COMPANY_POOL = {
     },
     # ★ 近鉄・都ホテルズ（文字数制限撤廃・NEWS/Press release巡回）
     "miyako-hotels": {
-        "id": "miyako-hotels", "name": "近鉄・都ホテルズ", "top_url": "https://www.miyakohotels.ne.jp/",
+        "id": "miyako-hotels", "name": "近鉄・都ホテルズ", "top_url": "https://www.miyakohotels.ne.jp/newsrelease/",
         "official_domains": ["miyakohotels.ne.jp"],
-        "urls": ["https://www.miyakohotels.ne.jp/", "https://www.miyakohotels.ne.jp/newsrelease/"],
+        "urls": ["https://www.miyakohotels.ne.jp/newsrelease/", "https://www.miyakohotels.ne.jp/"],
         "query": '"近鉄・都ホテルズ" OR "都ホテルズ＆リゾーツ" OR "都ホテル"',
     },
-    # ★ KNT-CT（ニュースリリースページ最優先・安定復帰）
+    # ★ KNT-CT（リリースページ最優先・安定復帰）
     "knt-ct": {
         "id": "knt-ct", "name": "KNT-CTホールディングス", "top_url": "https://www.kntcthd.co.jp/news/",
         "official_domains": ["kntcthd.co.jp"],
@@ -349,7 +347,7 @@ COMPANY_POOL = {
     "kintetsu-bus": {
         "id": "kintetsu-bus", "name": "近鉄バス", "top_url": "https://www.kintetsu-bus.co.jp/news/",
         "official_domains": ["kintetsu-bus.co.jp"],
-        "urls": ["https://www.kintetsu-bus.co.jp/news/", "https://www.kintetsu-bus.co.jp/"],
+        "urls": ["https://www.kintetsu-bus.co.jp/news/", "https://www.kintetsu-bus.co.jp/topics/"],
         "query": '"近鉄バス"',
     },
     "nara-kotsu": {
@@ -891,10 +889,13 @@ def fetch_official_releases(company_info, max_days_back=21):
 
 
 # ==========================================
-# 6. 一般ニュース取得エンジン（昨日の gemini-code-1793070457686.py 安定版完全復元＋直リンク化）
+# 6. 一般ニュース取得エンジン（昨日の gemini-code-1793070457686.py 完全復元版＋直リンク自動化）
 # ==========================================
-def resolve_news_url(link, source_domain=""):
-    """Google NewsラッパーURLやBing暗号化URLから、新聞社・メディアの掲載ページ直リンクを復元"""
+def resolve_news_url(link, source_domain="", clean_title=""):
+    """
+    Google News RSS のラッパーURL (https://news.google.com/rss/articles/...) や
+    BingのラッパーURLから、新聞社・メディアの実際の掲載ページ直リンクを復元する。
+    """
     if not link:
         return source_domain or ""
 
@@ -918,7 +919,7 @@ def resolve_news_url(link, source_domain=""):
             except Exception:
                 pass
 
-    # 2. Google News RSS の直リンク復元（アクセス権エラーの根本防止）
+    # 2. Google News RSS の直リンク復元（アクセス権エラーの根本解消）
     if "news.google.com" in link:
         m = re.search(r'(?:articles|read)/([a-zA-Z0-9_\-]+)', link)
         if m:
@@ -944,8 +945,12 @@ def resolve_news_url(link, source_domain=""):
             except Exception:
                 pass
 
+        # デコードできない場合、news.google.com を開くと「アクセス権がありません」エラーになるため、
+        # 配信元メディアの直リンク（例: https://www.nikkei.com）または元記事検索直リンクへ自動転送
         if source_domain and "google.com" not in source_domain:
             return source_domain
+        elif clean_title:
+            return f"https://www.google.com/search?q={urllib.parse.quote(clean_title)}"
 
     return link
 
@@ -953,7 +958,7 @@ def resolve_news_url(link, source_domain=""):
 def fetch_general_news(query, company_dict, max_days_back=21):
     """
     昨日の gemini-code-1793070457686.py をベースに完全復元。
-    過剰な本文チェックを撤廃し、Google News/Bing Newsのヒット記事を直リンク化して確実に採用。
+    Google News RSS ＋ Bing News RSS の二重系で過剰な本文判定を行わず素直に採用。
     """
     results = []
     company_name = company_dict["name"]
@@ -967,7 +972,7 @@ def fetch_general_news(query, company_dict, max_days_back=21):
         "Accept": "application/rss+xml, application/xml, text/xml, */*",
     }
 
-    # 昨日の gemini-code-1793070457686.py の二重系エンドポイント
+    # 昨日の gemini-code-1793070457686.py と全く同じ二重系エンドポイント
     endpoints = [
         f"https://news.google.com/rss/search?q={encoded_q}&hl=ja&gl=JP&ceid=JP:ja",
         f"https://www.bing.com/news/search?q={encoded_q}&format=rss&mkt=ja-JP"
@@ -1001,6 +1006,11 @@ def fetch_general_news(query, company_dict, max_days_back=21):
                 if not raw_link:
                     continue
 
+                clean_title = raw_title.strip()
+                clean_desc = re.sub(r"<[^>]+>", " ", desc)
+                clean_desc = html.unescape(clean_desc)
+                clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
+
                 source_name = ""
                 source_domain = ""
                 source_el = item.find("source")
@@ -1011,8 +1021,8 @@ def fetch_general_news(query, company_dict, max_days_back=21):
                         source_domain = source_el.attrib["url"].strip()
 
                 # 一次ソースの直リンクへ自動復元（Google Newsアクセス遮断回避）
-                real_link = resolve_news_url(raw_link, source_domain)
-                if not real_link or "news.google.com" in real_link:
+                real_link = resolve_news_url(raw_link, source_domain, clean_title)
+                if not real_link:
                     continue
 
                 if real_link in seen_links:
@@ -1029,11 +1039,6 @@ def fetch_general_news(query, company_dict, max_days_back=21):
 
                 if not item_date or not (cutoff_date <= item_date <= today):
                     continue
-
-                clean_title = raw_title.strip()
-                clean_desc = re.sub(r"<[^>]+>", " ", desc)
-                clean_desc = html.unescape(clean_desc)
-                clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
 
                 combined_text = (clean_title + " " + clean_desc).lower()
 
@@ -1110,7 +1115,7 @@ def fetch_general_news(query, company_dict, max_days_back=21):
 # 7. 社別キャッシュエンジン
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_restored_perfect_direct_news_v900"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_restored_perfect_direct_news_v950"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
@@ -1620,7 +1625,7 @@ components.html(
 )
 
 # ==========================================
-# 12. 結果の描画（完全絞り込み＆両方青色トグル表示）
+# 12. 結果の描画（完全絞り込み＆排他トグル表示）
 # ==========================================
 show_official = st.session_state.show_official
 show_news = st.session_state.show_news
