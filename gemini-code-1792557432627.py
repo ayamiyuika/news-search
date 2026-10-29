@@ -62,11 +62,13 @@ NAV_EXCLUDE_WORDS = {
     "空港リムジンバス", "路線バス", "貸切バス", "高速バス"
 }
 
-# セッションステートの初期化（完全排他：初期は公式発表のみ青色ON）
+GENRE_TAGS = ["経済", "車両・運行", "イベント", "経営", "地域", "安全・技術"]
+
+# セッションステートの初期化
 today = datetime.datetime.now(JST).date()
 
 if "view_mode" not in st.session_state:
-    st.session_state.view_mode = "official"  # "official" または "news"
+    st.session_state.view_mode = "official"  # "official"（公式発表のみ） または "news"（ニュースのみ）
 if "period_days" not in st.session_state:
     st.session_state.period_days = 3          # 初期：3日間
 if "custom_date_range" not in st.session_state:
@@ -75,32 +77,42 @@ if "hidden_companies" not in st.session_state:
     st.session_state.hidden_companies = set()
 if "selected_filter_companies" not in st.session_state:
     st.session_state.selected_filter_companies = set()
+if "selected_genres" not in st.session_state:
+    st.session_state.selected_genres = set()
 if "diag_logs" not in st.session_state:
     st.session_state.diag_logs = {}
 
-# クエリパラメータ処理
-selected_from_query = []
+# クエリパラメータ処理（会社・ジャンルの連携）
+selected_from_query_c = []
+selected_from_query_g = []
 try:
     if hasattr(st.query_params, "get_all"):
-        selected_from_query = st.query_params.get_all("c")
+        selected_from_query_c = st.query_params.get_all("c")
+        selected_from_query_g = st.query_params.get_all("g")
     else:
-        val = st.query_params.get("c")
-        if isinstance(val, list):
-            selected_from_query = val
-        elif isinstance(val, str):
-            selected_from_query = [val]
+        val_c = st.query_params.get("c")
+        val_g = st.query_params.get("g")
+        selected_from_query_c = [val_c] if isinstance(val_c, str) else (val_c or [])
+        selected_from_query_g = [val_g] if isinstance(val_g, str) else (val_g or [])
 except Exception:
     pass
 
-if "submitted" in st.query_params:
-    st.session_state.selected_filter_companies = set(selected_from_query)
+if "submitted_comp" in st.query_params:
+    st.session_state.selected_filter_companies = set(selected_from_query_c)
     st.query_params.clear()
-elif "reset" in st.query_params:
+elif "reset_comp" in st.query_params:
     st.session_state.selected_filter_companies.clear()
     st.query_params.clear()
 
+if "submitted_genre" in st.query_params:
+    st.session_state.selected_genres = set(selected_from_query_g)
+    st.query_params.clear()
+elif "reset_genre" in st.query_params:
+    st.session_state.selected_genres.clear()
+    st.query_params.clear()
+
 # ==========================================
-# 1. 会社マスタープール（JR東日本・近鉄GHD・近鉄・阪急にPR TIMES設定追加）
+# 1. 会社マスタープール
 # ==========================================
 COMPANY_POOL = {
     # --- JR各社 ---
@@ -140,6 +152,7 @@ COMPANY_POOL = {
         "urls": ["https://www.jr-shikoku.co.jp/03_news/press/", "https://www.jr-shikoku.co.jp/"],
         "query": "JR四国 OR 四国旅客鉄道",
     },
+    # ★ JR九州（古い年の混入防止）
     "jr-kyushu": {
         "id": "jr-kyushu", "name": "JR九州", "top_url": "https://www.jrkyushu.co.jp/",
         "official_domains": ["jrkyushu.co.jp"],
@@ -171,28 +184,33 @@ COMPANY_POOL = {
         "urls": ["https://www.keio.co.jp/news/update/news_release/", "https://www.keio.co.jp/news/update/index.html", "https://www.keio.co.jp/"],
         "query": "京王電鉄",
     },
+    # ★ 小田急電鉄（企業・IRニュースリリースページ最優先）
     "odakyu": {
         "id": "odakyu", "name": "小田急電鉄", "top_url": "https://www.odakyu.jp/company/about/news/",
         "official_domains": ["odakyu.jp"],
         "urls": ["https://www.odakyu.jp/company/about/news/", "https://www.odakyu.jp/news/"],
         "query": "小田急電鉄",
     },
+    # ★ 東急電鉄（ブロック構造解析）
     "tokyu": {
         "id": "tokyu", "name": "東急電鉄（東急を含む）", "top_url": "https://www.tokyu.co.jp/company/news/",
         "official_domains": ["tokyu.co.jp"],
         "urls": [
             "https://www.tokyu.co.jp/company/news/",
+            "https://www.tokyu.co.jp/company/",
             "https://www.tokyu.co.jp/information/",
             "https://www.tokyu.co.jp/",
         ],
         "query": "東急電鉄 OR 東急",
     },
+    # ★ 京浜急行電鉄
     "keikyu": {
         "id": "keikyu", "name": "京浜急行電鉄", "top_url": "https://www.keikyu.co.jp/company/news/",
         "official_domains": ["keikyu.co.jp"],
         "urls": ["https://www.keikyu.co.jp/company/news/", "https://www.keikyu.co.jp/report/", "https://www.keikyu.co.jp/"],
         "query": "京浜急行電鉄 OR 京急",
     },
+    # ★ 相模鉄道
     "sotetsu": {
         "id": "sotetsu", "name": "相模鉄道（相鉄HD含む）", "top_url": "https://www.sotetsu.co.jp/",
         "official_domains": ["sotetsu.co.jp"],
@@ -205,6 +223,7 @@ COMPANY_POOL = {
         "urls": ["https://www.meitetsu.co.jp/profile/news/", "https://www.meitetsu.co.jp/"],
         "query": "名古屋鉄道 OR 名鉄",
     },
+    # ★ 南海電気鉄道（テーブル走査完全復旧）
     "nankai": {
         "id": "nankai", "name": "南海電気鉄道", "top_url": "https://www.nankai.co.jp/",
         "official_domains": ["nankai.co.jp"],
@@ -223,7 +242,7 @@ COMPANY_POOL = {
         "urls": ["https://www.hanshin.co.jp/press/", "https://www.hanshin.co.jp/release/", "https://www.hanshin.co.jp/"],
         "query": "阪神電気鉄道 OR 阪神電車",
     },
-    # ★ 阪急電鉄（PR TIMES直接取得 ＋ ニュースリリース巡回）
+    # ★ 阪急電鉄（PR TIMES直接取得 ＋ ニュースリリース巡回・top_url修復）
     "hankyu": {
         "id": "hankyu", "name": "阪急電鉄", "top_url": "https://www.hankyu.co.jp/",
         "official_domains": ["hankyu.co.jp", "hankyu-hanshin.co.jp", "prtimes.jp"],
@@ -247,7 +266,7 @@ COMPANY_POOL = {
         ],
         "query": "阪急阪神ホールディングス OR \"阪急阪神HD\"",
     },
-    # ★ 西日本鉄道（リリースページ最優先）
+    # ★ 西日本鉄道（リリースページ最優先・ブロック構造解析）
     "nishitetsu": {
         "id": "nishitetsu", "name": "西日本鉄道", "top_url": "https://www.nishitetsu.co.jp/ja/news.html",
         "official_domains": ["nishitetsu.co.jp"],
@@ -270,7 +289,7 @@ COMPANY_POOL = {
         ],
         "query": "近鉄グループホールディングス OR 近鉄グループHD OR 近鉄GHD OR 近鉄グループ OR 近鉄",
     },
-    # ★ 近畿日本鉄道（PR TIMES直接取得 ＋ whatsnew巡回）
+    # ★ 近畿日本鉄道（PR TIMES直接取得 ＋ whatsnewブロック解析）
     "kintetsu-railway": {
         "id": "kintetsu-railway", "name": "近畿日本鉄道", "top_url": "https://www.kintetsu.co.jp/all_news/whatsnew.html",
         "official_domains": ["kintetsu.co.jp", "prtimes.jp"],
@@ -318,7 +337,7 @@ COMPANY_POOL = {
         "urls": ["https://www.kinshostore.co.jp/html/news.php", "https://www.kinsho-store.co.jp/html/news.php", "https://www.kinshostore.co.jp/"],
         "query": '"近商ストア"',
     },
-    # ★ 近鉄・都ホテルズ（正規URL: pressrelease/）
+    # ★ 近鉄・都ホテルズ（正規URL: pressrelease/ へ完全修復）
     "miyako-hotels": {
         "id": "miyako-hotels", "name": "近鉄・都ホテルズ", "top_url": "https://www.miyakohotels.ne.jp/pressrelease/",
         "official_domains": ["miyakohotels.ne.jp"],
@@ -455,6 +474,7 @@ def parse_date_text(raw_text, current_year):
     text = re.sub(r"<[^>]+>", " ", raw_text)
     text = text.translate(zen_to_han)
 
+    # 西暦（過去年を拾わないよう4桁年号を厳格チェック）
     m_seireki = re.search(r"((?:19|20)\d{2})\s*[年\./\-]\s*([0-9]{1,2})\s*[月\./\-]\s*([0-9]{1,2})\s*日?", text)
     if m_seireki:
         try:
@@ -462,6 +482,7 @@ def parse_date_text(raw_text, current_year):
         except ValueError:
             pass
 
+    # 令和
     m_reiwa = re.search(r"令和\s*([0-9]+|元)\s*年\s*([0-9]{1,2})\s*月\s*([0-9]{1,2})\s*日", text)
     if m_reiwa:
         y_val = 1 if m_reiwa.group(1) == "元" else int(m_reiwa.group(1))
@@ -470,20 +491,12 @@ def parse_date_text(raw_text, current_year):
         except ValueError:
             pass
 
-    if not re.search(r"(?:19|20)\d{2}", text):
-        m_md = re.search(r"(?<!\d)(1[0-2]|0?[1-9])\s*[月\./\-]\s*(3[01]|[12][0-9]|0?[1-9])\s*日?(?!\d)", text)
-        if m_md:
-            try:
-                return datetime.date(current_year, int(m_md.group(1)), int(m_md.group(2)))
-            except ValueError:
-                pass
-
     return None
 
 
 def clean_title_advanced(raw_title, company_info):
-    """タイトルをサニタイズ（日付・ジャンル・残骸・PDFサイズを徹底除去）"""
-    t = re.sub(r"<[^>]*>", " ", raw_title)
+    """タイトルをサニタイズ（日付・ジャンル・残骸・PDFサイズ・NEW企業を徹底除去）"""
+    t = re.sub(r"<[^>]+>", " ", raw_title)
     t = html.unescape(t)
     t = re.sub(r'\s+', ' ', t).strip()
 
@@ -498,31 +511,38 @@ def clean_title_advanced(raw_title, company_info):
                 t = re.sub(r'^' + g + r'\s+[:：|｜・\s\-]*', '', t)
                 t = re.sub(r'^' + g + r'[:：|｜・\-]\s*', '', t)
 
-    # 1. 末尾の [PDF: 1.6MB] や [PDF] などを除去
+    # ★ 先頭の「NEW 企業」「NEW」「企業」「企業情報」を完全に削除
+    t = re.sub(r'^(?:NEW|新着)\s*(?:企業情報|企業|リリース|お知らせ)?\s*[:：|｜・\s\-]*', '', t, flags=re.I)
+    t = re.sub(r'^(?:企業情報|企業|お知らせ|ニュースリリース|プレスリリース)\s*[:：|｜・\s\-]+', '', t)
+
+    # 末尾の日付パターン削除（三交ホールディングス等: "2026.10.26" や "2026年10月26日"）
+    t = re.sub(r'[\s:：|｜・\-]+(?:(?:19|20)\d{2}[年\.\/\-]\s*\d{1,2}[月\.\/\-]\s*\d{1,2}日?)\s*$', '', t)
+
+    # 末尾の [PDF: 1.6MB] や [PDF] などを除去
     t = re.sub(r'[\[［【\(（]\s*(?:PDF\s*[:：]?\s*)?[0-9\.]+\s*(?:[KMG]B|キロバイト|メガバイト)\s*[\]］】\)）]\s*$', '', t, flags=re.I)
     t = re.sub(r'[\[［【\(（]\s*PDF\s*[\]］】\)）]\s*$', '', t, flags=re.I)
     t = re.sub(r'\.pdf\s*$', '', t, flags=re.I)
 
-    # 2. 英語日付の除去
+    # 英語日付の除去
     t = re.sub(r'^(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+(?:19|20)\d{2}\s*[:：|｜・\s\-]*', '', t, flags=re.I)
 
-    # 3. 日本語日付・西暦・元号の除去（タイトル先頭）
+    # 日本語日付・西暦・元号の除去（タイトル先頭）
     t = re.sub(r'^(?:(?:19|20)\d{2}[年\.\/\-]\s*\d{1,2}[月\.\/\-]\s*\d{1,2}日?)\s*[:：|｜・\s\-]*', '', t)
     t = re.sub(r'^(?:(?:令和|平成)\s*(?:\d+|元)年\s*\d{1,2}月\s*\d{1,2}日)\s*[:：|｜・\s\-]*', '', t)
     t = re.sub(r'^[\[【(](?:(?:19|20)\d{2}[年\.\/\-]\s*\d{1,2}[月\.\/\-]\s*\d{1,2}日?)[\]】)]\s*', '', t)
 
-    # 4. JR九州のようなナビゲーション残骸の除去
+    # JR九州のようなナビゲーション残骸の除去
     t = re.sub(r'^.*?11月\s*12月\s*(?:(?:19|20)\d{2}年\d{1,2}月\d{1,2}日)?\s*', '', t)
     t = re.sub(r'^(?:新着情報|ニュースリリース|お知らせ|イベント情報|IR情報|プレスリリース)\s*', '', t)
 
-    # 5. ジャンル・特定会社表記の除去
+    # ジャンル・特定会社表記の除去
     t = re.sub(r'^流通\s+(?:㈱|株式会社)?京阪流通システムズ\s+', '', t)
     t = re.sub(r'^(?:建設|運輸サービス|運輸|バス|電車|鉄道|流通|不動産|ホテル|レジャー|リテール|グループ|その他)\s*', '', t)
 
-    # 6. 相鉄の欠損年修復
+    # 相鉄の欠損年修復
     t = re.sub(r'^026年', '2026年', t)
 
-    # 7. 各社専用クレンジング
+    # 各社専用クレンジング
     if cid == "kinsho-store":
         t = re.sub(r'(?:NEW|新着|お知らせ|重要|\.pdf|\.PDF)+', '', t).strip()
         t = re.sub(r'^[【\[（\(].*?[】\]）\)]', '', t).strip()
@@ -604,27 +624,42 @@ def classify_article_advanced(title, summary=""):
 
 
 # ==========================================
-# 2-C. ★ 野球チーム除外フィルター（優勝セール等は経済として残す）
+# 2-C. ★ 野球チーム除外フィルター＆一般人店舗除外フィルター
 # ==========================================
-def is_baseball_noise(title, desc=""):
+def is_noise_article(title, desc=""):
     text = (title + " " + desc).lower()
 
+    # 1. 野球チーム関連の除外（優勝セール・経済効果等は残す）
     baseball_terms = [
         "タイガース", "バファローズ", "南海ホークス", "ホークス", "阪急ブレーブス",
         "プロ野球", "ドラフト", "クライマックスシリーズ", "日本シリーズ", "セ・リーグ", "パ・リーグ",
         "甲子園球場", "打線", "ホームラン", "完封", "サヨナラ勝ち", "先発投手"
     ]
-    
-    # 商業・経済関連のキーワードがあれば除外しない
-    keep_terms = [
+    keep_commerce = [
         "セール", "優勝セール", "記念セール", "応援セール", "特売", "経済効果", "百貨店", "売上", "消費", "商業"
     ]
+    if any(term in text for term in baseball_terms):
+        if not any(k in text for k in keep_commerce):
+            return True
 
-    has_baseball = any(term in text for term in baseball_terms)
-    if has_baseball:
-        has_keep = any(k in text for k in keep_terms)
-        if not has_keep:
-            return True  # 野球単体の記事なので除外
+    # 2. 沿線の一般人店舗オープン除外（大手・駅ナカ・スーパーは残す）
+    open_keywords = ["オープン", "開業", "出店", "開店", "誕生", "新店舗", "リニューアルオープン"]
+    if any(w in text for w in open_keywords):
+        keep_large = [
+            "イオン", "ららぽーと", "アリオ", "モール", "ショッピングセンター", "商業施設",
+            "駅ビル", "駅ナカ", "エキナカ", "百貨店", "スーパー", "スーパーマーケット",
+            "ホテル", "オフィス", "再開発", "複合施設", "直営", "鉄道", "電鉄", "jr", "近鉄",
+            "東急ストア", "近商ストア", "kinsho", "ハーベス", "成城石井", "ローソン", "セブン", "ファミマ",
+            "新駅", "複合ビル", "施設"
+        ]
+        if not any(k in text for k in keep_large):
+            small_shop_keywords = [
+                "ラーメン", "らーめん", "つけ麺", "カフェ", "喫茶", "パン屋", "ベーカリー", "居酒屋", "バル",
+                "サロン", "美容室", "整体", "マッサージ", "古着", "テイクアウト専門店", "テイクアウト専門",
+                "餃子専門店", "スイーツ店", "洋菓子店", "菓子店", "バー", "焼肉店", "定食屋", "うどん店", "蕎麦店"
+            ]
+            if any(s in text for s in small_shop_keywords):
+                return True
 
     return False
 
@@ -816,7 +851,7 @@ def parse_official_releases_universal(html_text, base_url, company_info, cutoff_
     if cid == "tokyu":
         clean_html = re.sub(r'<form.*?>.*?</form>', '', clean_html, flags=re.DOTALL | re.IGNORECASE)
 
-    # ブロック構造解析（li, tr, dl, article）
+    # ★ ブロック構造解析（li, tr, dl, article）
     container_patterns = [
         r'<li[^>]*>(.*?)</li>',
         r'<tr[^>]*>(.*?)</tr>',
@@ -868,7 +903,7 @@ def parse_official_releases_universal(html_text, base_url, company_info, cutoff_
 
 
 # ==========================================
-# 5. 公式発表 取得ディスパッチャー（PR TIMES完全連携）
+# 5. 公式発表 取得ディスパッチャー
 # ==========================================
 def fetch_official_releases(company_info, max_days_back=21):
     results = []
@@ -885,7 +920,7 @@ def fetch_official_releases(company_info, max_days_back=21):
         "status": "INIT"
     }
 
-    # ★ PR TIMES直接取得（JR東日本、近鉄GHD、近鉄、阪急電鉄等）
+    # PR TIMES直接取得（JR東日本、近鉄GHD、近鉄、阪急電鉄等）
     if "prtimes_url" in company_info:
         pr_items = fetch_prtimes_releases(company_info["prtimes_url"], company_info, cutoff_date, today, current_year)
         results.extend(pr_items)
@@ -1096,7 +1131,7 @@ def fetch_general_news(query, company_dict, max_days_back=21):
                     if cand:
                         source_name = cand
 
-                # ★ 個別記事そのもののURLを直接復元（検索窓URLは絶対に作らない）
+                # 個別記事直リンク復元（検索窓URLは絶対に作らない）
                 real_link = extract_direct_article_url(raw_link)
                 if not real_link:
                     real_link = raw_link
@@ -1116,22 +1151,10 @@ def fetch_general_news(query, company_dict, max_days_back=21):
                 if not item_date or not (cutoff_date <= item_date <= today):
                     continue
 
-                combined_text = (clean_title + " " + clean_desc).lower()
-
-                # ノイズ除外
-                noise_keywords = [
-                    "招待券", "プレゼント", "懸賞", "合唱団", "定期演奏会",
-                    "警察weekly", "県警weekly", "現行犯逮捕", "酒酔い運転", "ひき逃げ",
-                    "安全運転管理者", "死亡事故", "容疑で逮捕", "書類送検"
-                ]
-                if any(ng in combined_text for ng in noise_keywords):
+                # ノイズ除外（野球単体・個人店舗など）
+                if is_noise_article(clean_title, clean_desc):
                     continue
 
-                # ★ 野球チームの内容を削除（優勝セール・経済効果等は残す）
-                if is_baseball_noise(clean_title, clean_desc):
-                    continue
-
-                # 厳格指定会社のみタイトルチェック
                 strict_companies = ["奈良交通", "近鉄バス", "三重交通", "志摩スペイン村", "あべのハルカス美術館"]
                 if company_name in strict_companies:
                     if company_name not in clean_title:
@@ -1171,7 +1194,7 @@ def fetch_general_news(query, company_dict, max_days_back=21):
         except Exception:
             pass
 
-    # ★【同一見出しの重複排除（より有力で影響力のあるメディアを最優先）】
+    # 有力・影響力のあるメディア優先の重複排除
     deduped_dict = {}
     for item in results:
         norm_key = re.sub(r'[\s\u3000・―\-―：:【】「」『』\(\)\[\]（）]+', '', item['title']).lower()
@@ -1193,7 +1216,7 @@ def fetch_general_news(query, company_dict, max_days_back=21):
 # 7. 社別キャッシュエンジン
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_prtimes_realurl_tag_perfect_v1"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_sidebar_redesign_ultimate_v2"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
@@ -1248,26 +1271,100 @@ st.markdown(
         color: #1e293b !important;
         border-color: #94a3b8 !important;
     }
-    section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] button {
-        padding: 5px 8px !important;
-        font-size: 0.86em !important;
-        white-space: nowrap !important;
+    .comp-chk, .genre-chk {
+        display: none !important;
     }
-    input[type="radio"] {
-        accent-color: #1e3a8a !important;
+    .comp-label, .genre-label {
+        display: inline-block;
+        padding: 4px 8px;
+        margin: 2px 2px;
+        background-color: #ffffff;
+        color: #334155;
+        border-radius: 6px;
+        border: 1px solid rgba(128, 128, 128, 0.28);
+        font-size: 0.8em;
+        font-weight: 600;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.15s ease;
+    }
+    .comp-label:hover, .genre-label:hover {
+        background-color: #f1f5f9;
+        border-color: #1e3a8a;
+        color: #1e3a8a;
+    }
+    .comp-chk:checked + .comp-label, .genre-chk:checked + .genre-label {
+        background-color: #1e3a8a !important;
+        color: #ffffff !important;
+        border-color: #1e3a8a !important;
+        font-weight: 700 !important;
+    }
+    .apply-filter-btn {
+        display: block;
+        width: 100%;
+        text-align: center;
+        padding: 7px 12px;
+        background-color: #1e3a8a;
+        color: #ffffff !important;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.88em;
+        font-weight: 700;
+        cursor: pointer;
+        margin-top: 6px;
+        margin-bottom: 4px;
+        text-decoration: none !important;
+    }
+    .clear-filter-btn {
+        display: block;
+        width: 100%;
+        text-align: center;
+        padding: 5px 12px;
+        background-color: #ffffff;
+        color: #475569 !important;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 0.84em;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none !important;
+        margin-bottom: 12px;
+    }
+    .group-quick-btn {
+        display: inline-block;
+        padding: 3px 8px;
+        margin: 2px;
+        background-color: rgba(30, 58, 138, 0.08);
+        border: 1px solid rgba(30, 58, 138, 0.3);
+        border-radius: 4px;
+        font-size: 0.78em;
+        font-weight: 700;
+        color: #1e3a8a;
+        cursor: pointer;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
+# 表示グループリスト
+jr_list = [COMPANY_POOL[cid] for cid in JR_ORDER]
+private_list = [COMPANY_POOL[cid] for cid in PRIVATE_ORDER]
+kintetsu_list = [COMPANY_POOL[cid] for cid in KINTETSU_ORDER]
+
+render_groups = [
+    ("jr", "JR", jr_list),
+    ("private", "私鉄", private_list),
+    ("kintetsu", "近鉄グループ", kintetsu_list),
+]
+
 # ==========================================
-# 9. サイドバー操作パネル（完全排他ボタンスイッチ仕様）
+# 9. サイドバー操作パネル（ご要望の全順序・新機能完全準拠）
 # ==========================================
 with st.sidebar:
-    st.header("⚙️ 設定")
+    st.header("⚙️ 設定・抽出条件")
 
-    # --- 1. 表示モード切り替え（ご指定通りの完全排他スイッチ：初期は公式のみ青色） ---
+    # --- 1. 表示モード切り替え（完全排他スイッチ） ---
     st.write("**1. 表示モード切り替え**")
     is_official_mode = (st.session_state.view_mode == "official")
     btn_type_off = "primary" if is_official_mode else "secondary"
@@ -1285,24 +1382,33 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # --- 2. 対象期間（３日間／７日間 ＆ カレンダー入力） ---
+    # --- 2. 対象期間（本日・3日間・7日間・カレンダーを縦に4つ1行ずつ配置） ---
     st.write("**2. 対象期間**")
-    p_col1, p_col2 = st.columns(2)
-    with p_col1:
-        type_p3 = "primary" if st.session_state.period_days == 3 else "secondary"
-        if st.button("📅 3日間", key="btn_p_3", type=type_p3, use_container_width=True):
-            st.session_state.period_days = 3
-            st.session_state.custom_date_range = (today - datetime.timedelta(days=2), today)
-            st.rerun()
-    with p_col2:
-        type_p7 = "primary" if st.session_state.period_days == 7 else "secondary"
-        if st.button("📅 7日間", key="btn_p_7", type=type_p7, use_container_width=True):
-            st.session_state.period_days = 7
-            st.session_state.custom_date_range = (today - datetime.timedelta(days=6), today)
-            st.rerun()
 
+    # 1. 本日（24時間）
+    type_p1 = "primary" if st.session_state.period_days == 1 else "secondary"
+    if st.button("📅 本日（24時間）", key="btn_p_1", type=type_p1, use_container_width=True):
+        st.session_state.period_days = 1
+        st.session_state.custom_date_range = (today, today)
+        st.rerun()
+
+    # 2. 3日間
+    type_p3 = "primary" if st.session_state.period_days == 3 else "secondary"
+    if st.button("📅 3日間", key="btn_p_3", type=type_p3, use_container_width=True):
+        st.session_state.period_days = 3
+        st.session_state.custom_date_range = (today - datetime.timedelta(days=2), today)
+        st.rerun()
+
+    # 3. 7日間
+    type_p7 = "primary" if st.session_state.period_days == 7 else "secondary"
+    if st.button("📅 7日間", key="btn_p_7", type=type_p7, use_container_width=True):
+        st.session_state.period_days = 7
+        st.session_state.custom_date_range = (today - datetime.timedelta(days=6), today)
+        st.rerun()
+
+    # 4. （任意の期間）（カレンダー入力）
     date_val = st.date_input(
-        "📅 カレンダーで任意指定",
+        "📅 任意の期間（カレンダー）",
         value=st.session_state.custom_date_range,
         max_value=today,
     )
@@ -1317,15 +1423,88 @@ with st.sidebar:
         st.session_state.custom_date_range = (start_date, end_date)
 
     diff_days = (end_date - start_date).days + 1
-    st.caption(f"📅 選択中: **{start_date.strftime('%Y/%m/%d')} 〜 {end_date.strftime('%Y/%m/%d')}** ({diff_days}日間)")
+    st.caption(f"選択中: **{start_date.strftime('%Y/%m/%d')} 〜 {end_date.strftime('%Y/%m/%d')}** ({diff_days}日間)")
+
+    st.markdown("---")
+
+    # --- 3. 表示する会社（サイドバー内に新設・クリックで青色ON・未選択は全社表示） ---
+    st.write("**3. 表示する会社**")
+    st.caption("※選ばない場合は全社表示になります。")
+
+    sel_comps = st.session_state.selected_filter_companies
+
+    def make_sidebar_comp_chk(comp_list, prefix):
+        pieces = []
+        for c in comp_list:
+            cid = c["id"]
+            chk_id = f"chk-{prefix}-{cid}"
+            checked = "checked" if cid in sel_comps else ""
+            pieces.append(
+                f'<input type="checkbox" name="c" value="{cid}" id="{chk_id}" class="comp-chk" {checked}>'
+                f'<label for="{chk_id}" class="comp-label">{c["name"]}</label>'
+            )
+        return "".join(pieces)
+
+    comp_form_html = f"""
+    <form method="GET" action="" id="sidebar-comp-form">
+      <input type="hidden" name="submitted_comp" value="1">
+      <div style="margin-bottom:6px;">
+        <span class="group-quick-btn" id="btn-toggle-jr">＋ JR一括</span>
+        <span class="group-quick-btn" id="btn-toggle-private">＋ 私鉄一括</span>
+        <span class="group-quick-btn" id="btn-toggle-kintetsu">＋ 近鉄一括</span>
+      </div>
+      <div style="max-height: 220px; overflow-y: auto; padding: 4px; border: 1px solid #e2e8f0; border-radius: 6px; background-color: #f8fafc; margin-bottom: 6px;">
+        <div style="font-size: 0.76em; font-weight: 700; color: #0284c7; margin-top:2px;">【JR各社】</div>
+        {make_sidebar_comp_chk(jr_list, 'jr')}
+        <div style="font-size: 0.76em; font-weight: 700; color: #10b981; margin-top:4px;">【私鉄各社】</div>
+        {make_sidebar_comp_chk(private_list, 'private')}
+        <div style="font-size: 0.76em; font-weight: 700; color: #f59e0b; margin-top:4px;">【近鉄グループ】</div>
+        {make_sidebar_comp_chk(kintetsu_list, 'kintetsu')}
+      </div>
+      <button type="submit" class="apply-filter-btn">選択した会社の記事を表示する</button>
+      <a href="?reset_comp=1" class="clear-filter-btn">選択を解除する</a>
+    </form>
+    """
+    st.markdown(comp_form_html, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # --- 4. ジャンル（サイドバー内に新設・タグ指定抽出） ---
+    st.write("**4. ジャンル（内容タグ）**")
+    st.caption("※選ばない場合は全ジャンル表示になります。")
+
+    sel_genres = st.session_state.selected_genres
+
+    def make_sidebar_genre_chk():
+        pieces = []
+        for g in GENRE_TAGS:
+            chk_id = f"chk-g-{g}"
+            checked = "checked" if g in sel_genres else ""
+            pieces.append(
+                f'<input type="checkbox" name="g" value="{g}" id="{chk_id}" class="genre-chk" {checked}>'
+                f'<label for="{chk_id}" class="genre-label">🏷️ {g}</label>'
+            )
+        return "".join(pieces)
+
+    genre_form_html = f"""
+    <form method="GET" action="" id="sidebar-genre-form">
+      <input type="hidden" name="submitted_genre" value="1">
+      <div style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:6px;">
+        {make_sidebar_genre_chk()}
+      </div>
+      <button type="submit" class="apply-filter-btn">選択した内容を表示する</button>
+      <a href="?reset_genre=1" class="clear-filter-btn">選択を解除する</a>
+    </form>
+    """
+    st.markdown(genre_form_html, unsafe_allow_html=True)
 
     if st.session_state.hidden_companies:
-        if st.button("👁️ すべての会社の記事を再表示", use_container_width=True):
+        if st.button("👁️ 非表示にした会社を再表示", use_container_width=True):
             st.session_state.hidden_companies.clear()
             st.rerun()
 
     st.markdown("---")
-    st.write("**3. データ更新**")
+    st.write("**5. データ更新**")
     st.caption("※サーバー負荷軽減のため、取得結果は1時間自動記憶されます。")
     if st.button("🔄 キャッシュを破棄して最新取得", type="primary", use_container_width=True):
         st.cache_data.clear()
@@ -1352,6 +1531,42 @@ with st.sidebar:
         "近鉄グループホールディングス デジタル戦略部 中谷\n"
         "(h5-nakatani@rw.kintetsu.co.jp)"
     )
+
+components.html(
+    """
+    <script>
+    (function() {
+        function setupSidebarToggles() {
+            const doc = window.parent.document;
+            if (!doc) return;
+
+            const groups = [
+                { btn: 'btn-toggle-jr', prefix: 'chk-jr-' },
+                { btn: 'btn-toggle-private', prefix: 'chk-private-' },
+                { btn: 'btn-toggle-kintetsu', prefix: 'chk-kintetsu-' }
+            ];
+
+            groups.forEach(function(g) {
+                const b = doc.getElementById(g.btn);
+                if (!b || b.dataset.bound === 'true') return;
+                b.dataset.bound = 'true';
+                b.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const inputs = doc.querySelectorAll('input[id^="' + g.prefix + '"]');
+                    let allChecked = true;
+                    inputs.forEach(function(inp) { if (!inp.checked) allChecked = false; });
+                    inputs.forEach(function(inp) { inp.checked = !allChecked; });
+                });
+            });
+        }
+        setupSidebarToggles();
+        setInterval(setupSidebarToggles, 300);
+    })();
+    </script>
+    """,
+    height=0,
+    width=0,
+)
 
 # ==========================================
 # 10. データ巡回・取得実行
@@ -1391,309 +1606,19 @@ if "last_fetch_time" not in st.session_state:
 
 st.caption(f"🕒 最終巡回時刻: {st.session_state.last_fetch_time.strftime('%Y-%m-%d %H:%M:%S')} (日本時間) （1時間ごとに自動再巡回）")
 
-jr_list = [COMPANY_POOL[cid] for cid in JR_ORDER]
-private_list = [COMPANY_POOL[cid] for cid in PRIVATE_ORDER]
-kintetsu_list = [COMPANY_POOL[cid] for cid in KINTETSU_ORDER]
-
-render_groups = [
-    ("jr", "JR", jr_list),
-    ("private", "私鉄", private_list),
-    ("kintetsu", "近鉄グループ", kintetsu_list),
-]
-
 # ==========================================
-# 11. 会社選択ナビゲーションフォーム（青色維持）
-# ==========================================
-st.markdown("<div id='sec-top' style='scroll-margin-top: 10px;'></div>", unsafe_allow_html=True)
-
-st.markdown(
-    """
-    <style>
-    .slim-jump-container {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin-top: 6px;
-        margin-bottom: 14px;
-        padding: 12px 16px;
-        background-color: rgba(128, 128, 128, 0.05);
-        border: 1px solid rgba(128, 128, 128, 0.18);
-        border-radius: 8px;
-    }
-    .slim-jump-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 2px 0;
-    }
-    .slim-label {
-        flex-shrink: 0;
-        width: auto !important;
-        min-width: 165px;
-        white-space: nowrap !important;
-        word-break: keep-all !important;
-        font-weight: 800;
-        font-size: 1.15em;
-        line-height: 1.3;
-        cursor: pointer !important;
-        user-select: none;
-        padding: 4px 8px;
-        border-radius: 6px;
-        transition: all 0.15s ease;
-    }
-    .slim-label:hover {
-        background-color: rgba(30, 58, 138, 0.12);
-        transform: translateY(-1px);
-    }
-    .label-jr { color: #0284c7; }
-    .label-private { color: #10b981; }
-    .label-kintetsu { color: #f59e0b; }
-    .slim-btn-wrapper {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-        flex-grow: 1;
-    }
-    .comp-chk {
-        display: none !important;
-    }
-    .comp-label {
-        display: inline-block;
-        padding: 3px 10px;
-        background-color: #ffffff;
-        color: #334155;
-        border-radius: 12px;
-        border: 1px solid rgba(128, 128, 128, 0.28);
-        font-size: 0.78em;
-        font-weight: 500;
-        line-height: 1.5;
-        cursor: pointer;
-        user-select: none;
-        transition: all 0.15s ease;
-    }
-    .comp-label:hover {
-        background-color: #f1f5f9;
-        border-color: #1e3a8a;
-        color: #1e3a8a;
-    }
-    .comp-chk:checked + .comp-label {
-        background-color: #1e3a8a !important;
-        color: #ffffff !important;
-        border-color: #1e3a8a !important;
-        font-weight: 700 !important;
-        box-shadow: 0 1px 3px rgba(30, 58, 138, 0.35) !important;
-    }
-    .filter-action-bar {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-top: 4px;
-        margin-bottom: 24px;
-    }
-    .apply-filter-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 8px 22px;
-        background-color: #1e3a8a;
-        color: #ffffff !important;
-        border: none;
-        border-radius: 6px;
-        font-size: 0.9em;
-        font-weight: 700;
-        cursor: pointer;
-        box-shadow: 0 2px 4px rgba(30, 58, 138, 0.25);
-        transition: all 0.15s ease;
-    }
-    .apply-filter-btn:hover {
-        background-color: #172554;
-        box-shadow: 0 4px 6px rgba(30, 58, 138, 0.35);
-    }
-    .clear-filter-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 7px 18px;
-        background-color: #ffffff;
-        color: #475569 !important;
-        border: 1px solid #cbd5e1;
-        border-radius: 6px;
-        font-size: 0.88em;
-        font-weight: 600;
-        text-decoration: none !important;
-        cursor: pointer;
-        transition: all 0.15s ease;
-    }
-    .clear-filter-btn:hover {
-        background-color: #f8fafc;
-        color: #1e3a8a !important;
-        border-color: #1e3a8a;
-    }
-    .link-action-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        margin-top: 6px;
-        padding: 4px 12px;
-        background-color: rgba(30, 58, 138, 0.08);
-        color: #1e3a8a !important;
-        border: 1px solid rgba(30, 58, 138, 0.35);
-        border-radius: 6px;
-        font-size: 0.82em;
-        font-weight: 600;
-        text-decoration: none;
-        transition: all 0.15s ease;
-    }
-    .link-action-btn:hover {
-        background-color: #1e3a8a;
-        color: #ffffff !important;
-        border-color: #1e3a8a;
-        text-decoration: none;
-    }
-    @media (max-width: 768px) {
-        .slim-jump-row {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 4px;
-        }
-        .slim-label {
-            width: auto !important;
-            min-width: unset;
-            white-space: nowrap !important;
-        }
-        .filter-action-bar {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 8px;
-        }
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-def make_chk_btn_html(comp_list, prefix, selected_set):
-    pieces = []
-    for c in comp_list:
-        cid = c["id"]
-        chk_id = f"chk-{prefix}-{cid}"
-        checked = "checked" if cid in selected_set else ""
-        pieces.append(
-            f'<input type="checkbox" name="c" value="{cid}" id="{chk_id}" class="comp-chk" {checked}>'
-            f'<label for="{chk_id}" class="comp-label">{c["name"]}</label>'
-        )
-    return "".join(pieces)
-
-sel_set = st.session_state.selected_filter_companies
-has_filter = len(sel_set) > 0
-
-jump_form_html = f"""
-<form method="GET" action="" id="company-filter-form">
-  <input type="hidden" name="submitted" value="1">
-  <div style="margin-top: 10px; margin-bottom: 8px; font-size: 0.9em; font-weight: 600; color: #334155;">
-    💡 会社名を押した後に、『選択した会社の記事を表示する』ボタンを押すと、その会社の記事だけを表示することができます。基本は全て表示します。
-  </div>
-  <div class="slim-jump-container">
-    <div class="slim-jump-row">
-      <div class="slim-label label-jr" id="toggle-btn-jr" title="クリックでJR各社を一括選択/解除">🚆 JR</div>
-      <div class="slim-btn-wrapper">
-        {make_chk_btn_html(jr_list, 'jr', sel_set)}
-      </div>
-    </div>
-    <div class="slim-jump-row">
-      <div class="slim-label label-private" id="toggle-btn-private" title="クリックで私鉄各社を一括選択/解除">🚇 私鉄</div>
-      <div class="slim-btn-wrapper">
-        {make_chk_btn_html(private_list, 'private', sel_set)}
-      </div>
-    </div>
-    <div class="slim-jump-row">
-      <div class="slim-label label-kintetsu" id="toggle-btn-kintetsu" title="クリックで近鉄グループ各社を一括選択/解除">🏢 近鉄グループ</div>
-      <div class="slim-btn-wrapper">
-        {make_chk_btn_html(kintetsu_list, 'kintetsu', sel_set)}
-      </div>
-    </div>
-  </div>
-  <div class="filter-action-bar">
-    <button type="submit" class="apply-filter-btn">選択した会社の記事を表示する</button>
-    <a href="?reset=1" class="clear-filter-btn">🔄 選択を解除する</a>
-  </div>
-</form>
-"""
-
-st.markdown(jump_form_html, unsafe_allow_html=True)
-
-components.html(
-    """
-    <script>
-    (function() {
-        function setupGroupToggles() {
-            const doc = window.parent.document;
-            if (!doc) return;
-
-            const groups = [
-                { id: 'toggle-btn-jr', prefix: 'chk-jr-' },
-                { id: 'toggle-btn-private', prefix: 'chk-private-' },
-                { id: 'toggle-btn-kintetsu', prefix: 'chk-kintetsu-' }
-            ];
-
-            groups.forEach(function(g) {
-                const el = doc.getElementById(g.id);
-                if (!el) return;
-                if (el.dataset.toggleBound === 'true') return;
-                el.dataset.toggleBound = 'true';
-
-                el.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    const inputs = doc.querySelectorAll('input[id^="' + g.prefix + '"]');
-                    if (!inputs || inputs.length === 0) return;
-
-                    let allChecked = true;
-                    inputs.forEach(function(inp) {
-                        if (!inp.checked) allChecked = false;
-                    });
-
-                    const newChecked = !allChecked;
-                    inputs.forEach(function(inp) {
-                        inp.checked = newChecked;
-                        inp.dispatchEvent(new Event('change', { bubbles: true }));
-                    });
-                });
-            });
-        }
-
-        setupGroupToggles();
-        let count = 0;
-        const timer = setInterval(function() {
-            setupGroupToggles();
-            count++;
-            if (count > 25) clearInterval(timer);
-        }, 200);
-
-        try {
-            const observer = new MutationObserver(function() {
-                setupGroupToggles();
-            });
-            if (window.parent && window.parent.document && window.parent.document.body) {
-                observer.observe(window.parent.document.body, { childList: true, subtree: true });
-            }
-        } catch(err) {}
-    })();
-    </script>
-    """,
-    height=0,
-    width=0,
-)
-
-# ==========================================
-# 12. 結果の描画（完全排他表示・色付き分類タグ表示）
+# 11. 結果の描画（完全排他表示・会社＆ジャンル絞り込み）
 # ==========================================
 view_mode = st.session_state.view_mode  # "official" または "news"
+has_comp_filter = len(st.session_state.selected_filter_companies) > 0
+sel_comp_set = st.session_state.selected_filter_companies
+
+has_genre_filter = len(st.session_state.selected_genres) > 0
+sel_genre_set = st.session_state.selected_genres
 
 for group_prefix, group_title, comp_list in render_groups:
-    if has_filter:
-        visible_comps = [c for c in comp_list if c["id"] in sel_set and c["id"] not in st.session_state.hidden_companies]
+    if has_comp_filter:
+        visible_comps = [c for c in comp_list if c["id"] in sel_comp_set and c["id"] not in st.session_state.hidden_companies]
     else:
         visible_comps = [c for c in comp_list if c["id"] not in st.session_state.hidden_companies]
 
@@ -1708,10 +1633,18 @@ for group_prefix, group_title, comp_list in render_groups:
     for comp in visible_comps:
         raw_items = all_cached_data.get(comp["name"], [])
 
+        # 1. 期間判定
         period_items = [
             item for item in raw_items
             if start_date <= item["date"] <= end_date
         ]
+
+        # 2. ジャンル判定（選択されている場合）
+        if has_genre_filter:
+            period_items = [
+                item for item in period_items
+                if item.get("tag_info", ("一般",))[0] in sel_genre_set
+            ]
 
         official_items = [i for i in period_items if i["type"] == "公式発表"]
         general_items = [i for i in period_items if i["type"] == "ニュース（一般サイト）"]
@@ -1719,6 +1652,7 @@ for group_prefix, group_title, comp_list in render_groups:
         official_items.sort(key=lambda x: x["date"], reverse=True)
         general_items.sort(key=lambda x: x["date"], reverse=True)
 
+        # 排他スイッチ
         if view_mode == "official":
             display_items = official_items
         else:
@@ -1748,7 +1682,7 @@ for group_prefix, group_title, comp_list in render_groups:
 
         if not display_items:
             mode_str = "公式発表" if view_mode == "official" else "ニュース"
-            st.info(f"📅 指定期間内の **{mode_str}** は **なし** です。")
+            st.info(f"📅 指定期間・条件内の **{mode_str}** は **なし** です。")
             st.write("")
         else:
             for item in display_items:
@@ -1795,7 +1729,7 @@ for group_prefix, group_title, comp_list in render_groups:
                         st.markdown(file_badge)
                         st.caption(f"情報元: {item['source']}")
 
-                        # ★ 分類タグの表示（「経済」「車両・運行」「イベント」等の色付きボタン風バッジ）
+                        # 分類タグの表示（ボタン風バッジ）
                         tag_name, tag_color, tag_bg, tag_border = item.get(
                             "tag_info", ("一般", "#475569", "#f8fafc", "#cbd5e1")
                         )
