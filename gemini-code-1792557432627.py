@@ -61,7 +61,7 @@ NAV_EXCLUDE_WORDS = {
     "もっと、", "一覧", "ホーム", "top", "トップ", "企業・ir情報", "企業サイト", "安全報告書",
     "役員一覧", "組織図", "沿革", "次へ", "前へ", "« 前ページへ", "前ページへ »", "次ページへ",
     "«", "»", "空港リムジンバス", "路線バス", "貸切バス", "高速バス", "一覧を見る",
-    "ニュースリリース一覧", "お知らせ一覧", "irニュース一覧", "一覧へ"
+    "ニュースリリース一覧", "お知らせ一覧", "irニュース一覧", "一覧へ", "もっと見る ＞", "詳細はこちら"
 }
 
 GENRE_TAGS = ["経済", "車両・運行", "イベント", "経営", "地域", "安全・技術"]
@@ -170,9 +170,9 @@ COMPANY_POOL = {
         "urls": ["https://www.jr-shikoku.co.jp/03_news/press/", "https://www.jr-shikoku.co.jp/"],
         "query": "JR四国 OR 四国旅客鉄道",
     },
-    # ★ JR九州（古い年・重複防止・プレフィックス除去）
+    # ★ JR九州（URL照合・専用厳格パーサー搭載）
     "jr-kyushu": {
-        "id": "jr-kyushu", "name": "JR九州", "top_url": "https://www.jrkyushu.co.jp/",
+        "id": "jr-kyushu", "name": "JR九州", "top_url": "https://www.jrkyushu.co.jp/news/release/index.html",
         "official_domains": ["jrkyushu.co.jp"],
         "urls": ["https://www.jrkyushu.co.jp/news/release/index.html"],
         "query": "JR九州 OR 九州旅客鉄道",
@@ -395,6 +395,7 @@ COMPANY_POOL = {
         "urls": ["https://www.parque-net.com/press/", "https://www.parque-net.com/blog/?cat=7"],
         "query": '"志摩スペイン村" OR "パルケエスパーニャ"',
     },
+    # ★ 近鉄バス（トピックス各タブ巡回）
     "kintetsu-bus": {
         "id": "kintetsu-bus", "name": "近鉄バス", "top_url": "https://www.kintetsu-bus.co.jp/news/",
         "official_domains": ["kintetsu-bus.co.jp"],
@@ -480,6 +481,36 @@ def decode_html_bytes(raw_bytes, url=""):
     return best_decoded if best_decoded else raw_bytes.decode("utf-8", errors="replace")
 
 
+def extract_date_from_url(url):
+    """PDFなどのURLパスから正確な日付を抽出"""
+    # 4桁年/2桁月/2桁日 (例: .../2026/10/28/...)
+    m1 = re.search(r'/(20\d{2})[/\._]([01]\d)[/\._]([0-3]\d)[/\._]', url)
+    if m1:
+        try:
+            return datetime.date(int(m1.group(1)), int(m1.group(2)), int(m1.group(3)))
+        except ValueError:
+            pass
+
+    # 4桁年 + 2桁月 + 2桁日 (例: .../20261028_... または 20261028.pdf)
+    m2 = re.search(r'/(20\d{2})([01]\d)([0-3]\d)[_\.]', url)
+    if m2:
+        try:
+            return datetime.date(int(m2.group(1)), int(m2.group(2)), int(m2.group(3)))
+        except ValueError:
+            pass
+
+    # 2桁年(20〜29) + 2桁月 + 2桁日 (例: .../261028_... または 230401.pdf)
+    m3 = re.search(r'/(2[0-9])([01]\d)([0-3]\d)[_\.]', url)
+    if m3:
+        try:
+            y = 2000 + int(m3.group(1))
+            return datetime.date(y, int(m3.group(2)), int(m3.group(3)))
+        except ValueError:
+            pass
+
+    return None
+
+
 def parse_date_text(raw_text, current_year):
     if not raw_text:
         return None
@@ -495,7 +526,7 @@ def parse_date_text(raw_text, current_year):
     text = re.sub(r"<[^>]+>", " ", raw_text)
     text = text.translate(zen_to_han)
 
-    # 西暦（過去年を拾わないよう4桁年号を厳格チェック）
+    # 西暦（4桁年号を厳格チェック）
     m_seireki = re.search(r"((?:19|20)\d{2})\s*[年\./\-]\s*([0-9]{1,2})\s*[月\./\-]\s*([0-9]{1,2})\s*日?", text)
     if m_seireki:
         try:
@@ -549,14 +580,19 @@ def clean_title_advanced(raw_title, company_info):
                 t = re.sub(r'^' + g + r'\s+[:：|｜・\s\-]*', '', t)
                 t = re.sub(r'^' + g + r'[:：|｜・\-]\s*', '', t)
 
-    # ★ JR九州専用サニタイズ（社長定例会見、ホテル、コーポレート等の接頭辞削除）
+    # ★ JR九州専用サニタイズ（「・ホテル」「コーポレート」等の中黒・不要カテゴリを完全除去）
     if cid == "jr-kyushu" or "九州" in company_info.get("name", ""):
-        jr_prefixes = ["社長定例記者会見", "社長定例会見", "社長会見", "定例会見", "ホテル", "コーポレート", "安全", "運輸サービス", "運輸", "建設", "営業", "人事", "決算", "流通・外食", "ビジネスサービス", "お詫び", "その他"]
-        for _ in range(3):
-            for p in jr_prefixes:
-                t = re.sub(r'^[【\[（\(]' + p + r'[】\]）\)]\s*', '', t)
-                t = re.sub(r'^' + p + r'\s+[:：|｜・\s\-]*', '', t)
-                t = re.sub(r'^' + p + r'[:：|｜・\-]\s*', '', t)
+        jr_cats = [
+            "ホテル", "コーポレート", "社長定例記者会見", "社長定例会見", "社長会見", "定例会見",
+            "運輸サービス", "運輸", "建設", "営業", "流通・外食", "ビジネスサービス",
+            "お詫び", "その他"
+        ]
+        cat_alt = "|".join([re.escape(c) for c in jr_cats])
+        for _ in range(4):
+            t = re.sub(r'^[・\s\-_:：|｜/・]+', '', t)
+            t = re.sub(r'^[【\[（\(](?:' + cat_alt + r')[】\]）\)]\s*', '', t, flags=re.I)
+            t = re.sub(r'^(?:' + cat_alt + r')(?=[\s:：|｜・\-_/])[\s:：|｜・\-_/]*', '', t, flags=re.I)
+            t = re.sub(r'^[・\s\-_:：|｜/・]+', '', t)
 
     # 先頭の「NEW 企業」「NEW」「企業」「企業情報」を完全に削除
     t = re.sub(r'^(?:NEW|新着)\s*(?:企業情報|企業|リリース|お知らせ)?\s*[:：|｜・\s\-]*', '', t, flags=re.I)
@@ -940,15 +976,21 @@ def parse_official_releases_universal(html_text, base_url, company_info, cutoff_
             if full_url in seen_urls:
                 continue
 
-            # 過去年リンク排除（2025以前、または23xxxx等の過去PDF）
+            # ★ JR九州：URL内の日付照合＆過去年排除
+            url_date = extract_date_from_url(full_url)
+            if url_date:
+                if not (cutoff_date <= url_date <= today):
+                    continue  # URLの日付が過去なので確実に破棄！
+                d_val = url_date
+
             if re.search(r'/(?:20[01]\d|202[0-5])(?:/|_|\.|\-)', full_url) or re.search(r'/(?:2[0-5])[01]\d[0-3]\d[_\.]', full_url):
                 continue
 
-            # JR九州専用：エリア別記事の除外
+            # JR九州専用：エリア別記事の除外（ブロック全体＋URLを対象）
             if cid == "jr-kyushu":
-                area_ng = ["長崎エリア", "熊本エリア", "鹿児島エリア", "大分エリア", "宮崎エリア", "佐賀エリア", "福岡エリア", "北九州エリア", "エリア情報"]
-                raw_text_check = a_m.group(2) + " " + full_url
-                if any(w in raw_text_check for w in area_ng):
+                area_ng = ["長崎エリア", "熊本エリア", "鹿児島エリア", "大分エリア", "宮崎エリア", "佐賀エリア", "福岡エリア", "北九州エリア", "エリア情報", "長崎支社", "熊本支社", "大分支社", "鹿児島支社"]
+                raw_check = dd_part + " " + full_url
+                if any(w in raw_check for w in area_ng):
                     continue
 
             if not is_jr_east:
@@ -957,7 +999,7 @@ def parse_official_releases_universal(html_text, base_url, company_info, cutoff_
                     continue
 
             clean_t = clean_title_advanced(a_m.group(2), company_info)
-            if not clean_t or len(clean_t) < 5:
+            if not clean_t or len(clean_t) < 5 or clean_t.lower() in ["詳細", "こちら", "詳しくはこちら", "pdf"]:
                 clean_t = clean_title_advanced(dd_part, company_info)
 
             if clean_t and len(clean_t) >= 5:
@@ -975,7 +1017,7 @@ def parse_official_releases_universal(html_text, base_url, company_info, cutoff_
                     "tag_info": tag_info,
                 })
 
-    # ★ 構造解析2: <tr> または <li> または <article> コンテナ走査（阪急・西鉄・南海等のカード式＆リスト対応）
+    # ★ 構造解析2: <tr> または <li> または <article> コンテナ走査
     container_patterns = [
         r'<tr[^>]*>(.*?)</tr>',
         r'<li[^>]*>(.*?)</li>',
@@ -997,15 +1039,22 @@ def parse_official_releases_universal(html_text, base_url, company_info, cutoff_
                 if full_url in seen_urls:
                     continue
 
+                # URL内の日付照合
+                url_date = extract_date_from_url(full_url)
+                if url_date:
+                    if not (cutoff_date <= url_date <= today):
+                        continue
+                    d_val = url_date
+
                 # 過去年リンク排除
                 if re.search(r'/(?:20[01]\d|202[0-5])(?:/|_|\.|\-)', full_url) or re.search(r'/(?:2[0-5])[01]\d[0-3]\d[_\.]', full_url):
                     continue
 
                 # JR九州専用：エリア別記事の除外
                 if cid == "jr-kyushu":
-                    area_ng = ["長崎エリア", "熊本エリア", "鹿児島エリア", "大分エリア", "宮崎エリア", "佐賀エリア", "福岡エリア", "北九州エリア", "エリア情報"]
-                    raw_text_check = a_m.group(2) + " " + full_url
-                    if any(w in raw_text_check for w in area_ng):
+                    area_ng = ["長崎エリア", "熊本エリア", "鹿児島エリア", "大分エリア", "宮崎エリア", "佐賀エリア", "福岡エリア", "北九州エリア", "エリア情報", "長崎支社", "熊本支社", "大分支社", "鹿児島支社"]
+                    raw_check = block + " " + full_url
+                    if any(w in raw_check for w in area_ng):
                         continue
 
                 if not is_jr_east:
@@ -1043,6 +1092,10 @@ def parse_official_releases_universal(html_text, base_url, company_info, cutoff_
 
             full_url = urllib.parse.urljoin(base_url, raw_href)
             if full_url in seen_urls:
+                continue
+
+            url_date = extract_date_from_url(full_url)
+            if url_date and not (cutoff_date <= url_date <= today):
                 continue
 
             if re.search(r'/(?:20[01]\d|202[0-5])(?:/|_|\.|\-)', full_url) or re.search(r'/(?:2[0-5])[01]\d[0-3]\d[_\.]', full_url):
@@ -1163,7 +1216,6 @@ def fetch_official_releases(company_info, max_days_back=21):
                             except Exception:
                                 pass
 
-                    # ドメインチェック
                     allowed_domains = company_info.get("official_domains", [])
                     if not any(d in l for d in allowed_domains) or l in seen_urls:
                         continue
@@ -1271,7 +1323,6 @@ def extract_direct_article_url(raw_link, clean_title, source_name):
             except Exception:
                 pass
 
-        # 社内でも確実に通る Yahoo!検索（タイトル＋媒体名）へ安全変換
         search_q = f"{clean_title} {source_name}".strip()
         return f"https://search.yahoo.co.jp/search?p={urllib.parse.quote(search_q)}"
 
@@ -1419,7 +1470,7 @@ def fetch_general_news(query, company_dict, max_days_back=21):
         except Exception:
             pass
 
-    # 有力メディア優先の重複排除（JR東日本・奈良交通等）
+    # 有力メディア優先の重複排除
     deduped_dict = {}
     for item in results:
         norm_key = re.sub(r'[\s\u3000・―\-―：:【】「」『』\(\)\[\]（）]+', '', item['title']).lower()
@@ -1441,7 +1492,7 @@ def fetch_general_news(query, company_dict, max_days_back=21):
 # 7. 社別キャッシュエンジン
 # ==========================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_sidebar_details_expand_v35"):
+def get_single_company_data(company_dict, max_days_back=21, cache_version="v2026_sidebar_details_expand_v45"):
     official = fetch_official_releases(company_dict, max_days_back=max_days_back)
     general = []
     if "query" in company_dict:
@@ -1846,7 +1897,7 @@ if "last_fetch_time" not in st.session_state:
 st.caption(f"🕒 最終巡回時刻: {st.session_state.last_fetch_time.strftime('%Y-%m-%d %H:%M:%S')} (日本時間) （1時間ごとに自動再巡回）")
 
 # ==========================================
-# 11. 結果の描画
+# 11. 結果の描画（タイトル安全リンク化＆公式発表の主な内容非表示）
 # ==========================================
 view_mode = st.session_state.view_mode  # "official" または "news"
 has_comp_filter = len(st.session_state.selected_filter_companies) > 0
@@ -1933,7 +1984,9 @@ for group_prefix, group_title, comp_list in render_groups:
                         "box-shadow: 0 1px 2px rgba(0,0,0,0.15); letter-spacing:0.04em;'>📢 公式発表</div>"
                     )
 
-                    title_link = item["url"]
+                    # ★ ご提案通り：公式発表のタイトルは各社のニュースリリースページ（一覧）へリンク
+                    title_link = comp.get("top_url", comp["urls"][0])
+
                     if comp["id"] == "jr-west":
                         if item.get("pdf_url"):
                             action_link = item["pdf_url"]
@@ -1988,12 +2041,13 @@ for group_prefix, group_title, comp_list in render_groups:
                             unsafe_allow_html=True,
                         )
 
-                        # ニュースの場合のみ「主な内容（約5行程度＋続きを読む）」を表示
+                        # ★ ニュースの場合のみ「主な内容（約5行程度＋続きを読む）」を表示
                         # 公式発表の場合は「主な内容」を非表示
                         if not is_official and item.get("summary"):
                             summary_text = item["summary"]
                             title_text = item["title"]
 
+                            # 約260文字（PCワイド画面で約5行分の分量）
                             char_threshold = 260
                             if len(summary_text) <= char_threshold or summary_text == title_text:
                                 st.markdown(
